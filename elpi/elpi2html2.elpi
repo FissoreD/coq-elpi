@@ -45,9 +45,7 @@ sanitize X Y :-
 
 pred mk-name i:string, i:term, o:string.
 mk-name S1 I Y :-
-  Y is "<span class='name' varname='" ^
-       {term_to_string I} ^
-       "'>" ^ S1 ^ "</span>".
+  Y is "\"id\":\"var\", \"cnt\":\"" ^ S1 ^ "\"".
 
 pred cur-int o:int.
 pred incr-int i:prop.
@@ -169,22 +167,23 @@ pp L B (app Args) A :-
 pp L B (lam F) A :- incr-int (
   par? L 70 B A B1 A1,
   new_int I,
-  pi x\
-    write "<div class='compound' level='70'><b>λ</b>",
+    pi x\ 
+    write "\"id\": \"quantification\",\n \"cnt\":{\n\"type\":\"anonymousForall\"",
+    write ",\"names\":[{",
     write {concat B1},
     var-to-string x I X, write X,
-    write ". </div><div class='compound'>",
+    write "}], \n\"body\":{",
     is-name x X => pp 10 [] (F x) A1,
-    write "</div>").
+    write "\n").
 
 pp _ B (const "!") A :- !,
   write {concat B},
-  write "<span class='cut'>!</span>",
+  write "\"id\":\"cut\"",
   write {concat A}.
 
 pp _ B (const "discard") A :-
   write {concat B},
-  write "_",
+  write "\"id\":\"cut\"",
   write {concat A}.
 
 pp _ B (const X) A :-

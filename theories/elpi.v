@@ -6,7 +6,7 @@ Elpi Document Builtins.
 
 (* Load once and forall these files in this .vo, to ease redistribution *)
 Elpi Checker "coq://elpi/coq-elpi-checker.elpi".
-Elpi Printer "elpi2html.elpi". (* this one is from elpi *)
+Elpi Printer "elpi/elpi2html2.elpi". (* this one is from elpi *)
 Elpi Template Command "coq://elpi/elpi-command-template.elpi".
 Elpi Template Tactic "coq://elpi/elpi-tactic-template.elpi".
 

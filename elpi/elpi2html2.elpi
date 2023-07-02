@@ -43,7 +43,7 @@ sanitize X Y :-
     rex_replace "'" "&apos;" ]
   X Y.
 
-pred mk-name i:string, i:A, o:string.
+pred mk-name i:string, i:term, o:string.
 mk-name S1 I Y :-
   Y is "<span class='name' varname='" ^
        {term_to_string I} ^
@@ -116,13 +116,13 @@ pp L B (app [ const ":-" , Hd , Hyps ]) A :-
   if (Hyps = app [ const "," , const "!" | Rest])
      (Hyps2 = app [ const "," | Rest], NeckCut = " neckcut")
      (Hyps2 = Hyps, NeckCut = ""),
-  write "<div class='hyps'>",
+  write "\"hyp\":{\n",
   pp 59 B1 Hyps2 [],
-  write "</div>",
-  Concl is "<div class='concl" ^ NeckCut ^ "'><div class='compound'>",
+  write "},\n",
+  Concl is "\"name\":{\"TODO\"},\n\"args\":{",
   write Concl,
   pp 59 [] Hd A1,
-  write "</div></div>".
+  write "}}".
 
 pp L B (app [ const C, lam _ ] as T) A :- (C = "pi"; C = "sigma"), !,
   par? L 60 B A B1 A1,
@@ -134,16 +134,17 @@ pp-quantifier-block B C (app [ const C, lam F ]) Args A :- !, incr-int (
   pi x\ if (C = "pi") (var-to-string x I X) (uvar-to-string x I X),
         is-name x X => pp-quantifier-block B C (F x) [X|Args] A).
 pp-quantifier-block B C T Args A :-
-  write "<div class='compound'>",
+  write "{\"id\": \"quantification\",\n \"cnt\":{\n\"type\":",
   write-math-quantifier B C,
-  iter-sep [] " " (b\ x\ a\ write x) {rev Args} [],
-  write ". </div><div class='compound'>",
+  write ",\"names\":[",
+  iter-sep [] " " (b\ x\ a\ write "\"", write x, write "\"") {rev Args} [],
+  write "],\n\"body\":{",
   pp 60 [] T A,
-  write "</div>".
+  write "}},".
 
 pred write-math-quantifier i:list string, i:string.
-write-math-quantifier B "pi"    :- write {concat B}, write "<b>∀</b>".
-write-math-quantifier B "sigma" :- write {concat B}, write "<b>∃</b>".
+write-math-quantifier B "pi"    :- write {concat B}, write "\"forall\"".
+write-math-quantifier B "sigma" :- write {concat B}, write "\"exists\"".
 
 pp L B (app [ const "," | Args ]) A :-
   par? L 60 B A B1 A1,
@@ -154,10 +155,12 @@ pp L B (app [ const "," | Args ]) A :-
 pp L B (app [ const "::", HD, TL ]) A :-
   par? L 99 B A B1 A1,
   grab-list TL Args Last,
-  write "<div class='compound' level='99'><b>[</b><div class='compound'>",
-  iter-sep2 B1 "</div><div class='compound'> " "<b>,</b>" (pp 61) [HD|Args] [],
-  if (Last = some X) (write " <b>|</b> ", pp 0 [] X []) (true),
-  write "</div><b>]</b></div>", write {concat A1}.
+  write "{\"id\":\"list\", \"cnt\":{",
+  write "\"l\":[",
+  iter-sep2 B1 "" "," (pp 61) [HD|Args] [],
+  write "]",
+  if (Last = some X) (write ",\"tl\":{", pp 0 [] X [], write "}") (true),
+  write "}}", write {concat A1}.
 
 pp L B (app Args) A :-
   par? L 65 B A B1 A1,
@@ -216,150 +219,16 @@ write-clause (clause Loc [A|Args] (arg Body)) :-
   new_int I, name-to-string A I A1,
   pi x\ is-name x A1 => write-clause (clause Loc Args (Body x)).
 write-clause (clause Loc [] C) :- !,
-  write "<div class='clause' predicate='", hd-symbol C, write "'>",
-  write "<div class='loc'>",
+  write "{ \"id\":\"clause\", \n\"title\":\"",
     term_to_string Loc LocS, write LocS,
-  write "</div>",
+    write "\", \n\"cnt\":{",
   cur-int 0 =>
   if (C = app [const ":-"|_])
      (pp 0 [] C [])
-     (write "<div class='hyps'><div class='hyp'></div></div><div class='concl'>",
+     (write "\"hyp\":[],",
        pp 0 [] C [],
-      write "</div>"),
-  write "</div>\n".
-
-pred write-preamble i:string.
-write-preamble F :-
-  write "<!DOCTYPE html>
-         <html>
-         <head>
-           <meta charset='UTF-8'> 
-           <title>",
-  write F,
-  write "  </title>
-           <link rel='stylesheet'
-             href='https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css'>
-           <script src='https://code.jquery.com/jquery-1.12.4.js'></script>
-           <script src='https://code.jquery.com/ui/1.12.1/jquery-ui.js'></script>
-           <script>
-           $( function() {
-               $( '.clause' ).each(function() { $( this ).resizable({
-                    start: function( event, ui ) {
-                      //$( ui.element ).css('max-width','100%');
-                    }
-              }); });
-           } );
-// Highlight the box around compound elements
-$( function() {
-  $('.compound').each(function() {
-    $( this ).mouseover(function (e) {
-      e.stopPropagation();
-      $( this ).addClass('hover')
-    }).mouseout(function (e) {
-      $( this ).removeClass('hover')
-    })
-  });
-});
-
-// Highlight all variables named the same
-$( function() {
-  $('.name').each(function() {
-    $( this ).mouseover(function (e) {
-      $( 'span[varname=' + $( this ).attr('varname') + ']' ).addClass('samevar')
-    }).mouseout(function (e) {
-      $( 'span[varname=' + $( this ).attr('varname') + ']' ).removeClass('samevar')
-    })
-  });
-});
-
-           </script>
-           <style>
-           .clause{
-             display: inline-block;
-             padding: 1em;
-             margin: 5px;
-             border: 2px solid black;
-             width: 30em;
-             cursor: default;
-           }
-           .hidden { 
-             display: none;
-           }
-           .hyps {
-             display: block;
-           }
-           .hyp {
-             display: inline-block;
-             margin-right: 1em;
-             margin-top: 0.5em;
-           }
-           .compound {
-             display: inline-block;
-             vertical-align: top;
-             padding-left: 1em;
-             text-indent: -1em;
-             border: 1px solid transparent;
-           }
-/*
-           .hover:after {
-             content: attr(level);
-             position: fixed;
-             right: 0;
-             top: 0;
-           }
-*/
-           .hover {
-             border: 1px dotted grey;
-             transition: border 0.5s;
-           }
-           .samevar {
-             color: #22aD22;
-             transition: color 0.5s;
-             border: 1px dotted #22aD22;
-             transition: border 0.5s;
-           }
-           .name {
-             border: 1px solid transparent;
-           }
-           .concl {
-             display: block;
-             border-top: 1px solid black;
-           }
-           .neckcut {
-             border-top: 2px solid red;
-           }
-           .cut {
-             color: red;
-           }
-           .loc {
-             display: block;
-             background-color: #ecebeb;
-           }
-         </style>
-         </head>
-         <body>
-         <h1>",
-  write F,
-  write "</h1>
-         <script type='text/javascript'>
-         function filter() {
-           var f = document.getElementById('filter').value;
-           var cl = document.getElementsByClassName('clause');
-           for (i=0;i < cl.length; i++) {
-             if (cl[i].getAttribute('predicate') === f || f === '' ) {
-               cl[i].classList.remove('hidden')
-             } else {
-               cl[i].classList.add('hidden')
-             }
-           }
-         }
-         </script>
-         <p>Filter predicate: <input onkeyup='filter();' type='text' id='filter' name='filter'></p>
-".
-
-pred write-end.
-write-end :-
-  write "</body></html>".
+      write "}"),
+  write "}\n".
 
 pred filter-out i:list A, i:(A -> prop), o:list A.
 filter-out [] _ [].
@@ -372,9 +241,9 @@ write-html P F R :-
   filter-out P (c\
     sigma Loc LocS \ c = (clause Loc _ _), 
     term_to_string Loc LocS, not(R LocS)) PF,
-  write-preamble F,
+  write "<body><pre>{\n\"clauses\":[\n",
   iter write-clause PF,
-  write-end.
+  write "]}</pre></body>".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

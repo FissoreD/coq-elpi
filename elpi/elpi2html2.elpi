@@ -6,6 +6,10 @@ accumulate elpi-quoted_syntax.
 
 shorten std.{spy, rev, exists}.
 
+pred escape-double-tick i:string, o:string.
+escape-double-tick A B :- 
+  rex.replace "\"" "\\\"" A B.
+
 pred iter i:(A -> prop), o:list A.
 iter _ [].
 iter P [X|XS] :- P X, iter P XS.
@@ -45,7 +49,7 @@ sanitize X Y :-
 
 pred mk-name i:string, i:term, o:string.
 mk-name S1 I Y :-
-  Y is "\"id\":\"var\", \"cnt\":\"" ^ S1 ^ "\"".
+  Y is "{\"id\":\"var\", \"cnt\":\"" ^ S1 ^ "\"}".
 
 pred cur-int o:int.
 pred incr-int i:prop.
@@ -73,7 +77,7 @@ pred par? i:int, i:int, i:list string, i:list string, o:list string, o:list stri
 par? CL PL Open Close Open1 Close1 :-
   if (CL =< PL)
      (Open1 = Open, Close1 = Close)
-     (Open1 = ["("|Open], Close1 = [")"|Close]).
+     (Open1 = [""|Open], Close1 = [""|Close]).
 
 kind option type -> type.
 type some A -> option A.
@@ -100,27 +104,30 @@ infx "as"  0 "&nbsp;<b>as</b>&nbsp;" 60 60.
 %@log (pp _ _ _ _).
 
 pred pp-compound i:prop.
-pp-compound P :- write "<div class='compound'>", P, write "</div>".
+pp-compound P :- P.
 
 %    pp Level  ParensBefore   Term    ParensAfter
 pred pp i:int, i:list string, i:term, i:list string.
 pp L B (app [ const OP, Left, Right ]) A :- infx OP LOP S PL PR, !,
   par? L LOP B A B1 A1, 
-  pp-compound (pp PL B1 Left  [S]),
-  pp-compound (pp PR [] Right A1).
+  write "{\"id\":\"clause\", \"isInfix\":1, \"cnt\":[\n{\"name\":\"",
+  write OP, write "\"}, ",
+  pp-compound (pp PL B1 Left  []), write ",",
+  pp-compound (pp PR [] Right A1),
+  write "]}".
 
 pp L B (app [ const ":-" , Hd , Hyps ]) A :-
   par? L 60 B A B1 A1,
   if (Hyps = app [ const "," , const "!" | Rest])
      (Hyps2 = app [ const "," | Rest], NeckCut = " neckcut")
      (Hyps2 = Hyps, NeckCut = ""),
-  write "\"hyp\":{\n",
+  write "\"hyp\":[\n",
   pp 59 B1 Hyps2 [],
-  write "},\n",
-  Concl is "\"name\":{\"TODO\"},\n\"args\":{",
+  write "],\n",
+  Concl is "\"args\":[",
   write Concl,
   pp 59 [] Hd A1,
-  write "}}".
+  write "]}".
 
 pp L B (app [ const C, lam _ ] as T) A :- (C = "pi"; C = "sigma"), !,
   par? L 60 B A B1 A1,
@@ -135,10 +142,10 @@ pp-quantifier-block B C T Args A :-
   write "{\"id\": \"quantification\",\n \"cnt\":{\n\"type\":",
   write-math-quantifier B C,
   write ",\"names\":[",
-  iter-sep [] " " (b\ x\ a\ write "\"", write x, write "\"") {rev Args} [],
-  write "],\n\"body\":{",
+  iter-sep [] ", " (b\ x\ a\ write "", write x, write "") {rev Args} [],
+  write "],\n\"body\":[",
   pp 60 [] T A,
-  write "}},".
+  write "]},".
 
 pred write-math-quantifier i:list string, i:string.
 write-math-quantifier B "pi"    :- write {concat B}, write "\"forall\"".
@@ -146,9 +153,7 @@ write-math-quantifier B "sigma" :- write {concat B}, write "\"exists\"".
 
 pp L B (app [ const "," | Args ]) A :-
   par? L 60 B A B1 A1,
-  write "<div class='hyp compound' level='60'>",
-  iter-sep2 B1 "</div><div class='hyp compound'>" "," (pp 59) Args A1,
-  write "</div>".
+  iter-sep2 B1 "" "," (pp 59) Args A1.
 
 pp L B (app [ const "::", HD, TL ]) A :-
   par? L 99 B A B1 A1,
@@ -157,12 +162,12 @@ pp L B (app [ const "::", HD, TL ]) A :-
   write "\"l\":[",
   iter-sep2 B1 "" "," (pp 61) [HD|Args] [],
   write "]",
-  if (Last = some X) (write ",\"tl\":{", pp 0 [] X [], write "}") (true),
+  if (Last = some X) (write ",\"tl\":", pp 0 [] X [], write "") (true),
   write "}}", write {concat A1}.
 
 pp L B (app Args) A :-
   par? L 65 B A B1 A1,
-  iter-sep B1 " " (pp 66) Args A1.
+  iter-sep B1 ", " (pp 66) Args A1.
 
 pp L B (lam F) A :- incr-int (
   par? L 70 B A B1 A1,
@@ -174,30 +179,40 @@ pp L B (lam F) A :- incr-int (
     var-to-string x I X, write X,
     write "}], \n\"body\":{",
     is-name x X => pp 10 [] (F x) A1,
-    write "\n").
+    write "}\n").
 
 pp _ B (const "!") A :- !,
   write {concat B},
-  write "\"id\":\"cut\"",
+  write "{\"id\":\"cut\"}",
   write {concat A}.
 
 pp _ B (const "discard") A :-
   write {concat B},
-  write "\"id\":\"cut\"",
+  write "{\"id\":\"discard\"}",
   write {concat A}.
 
 pp _ B (const X) A :-
   write {concat B},
+  write "{\"id\":\"prop\", \"cnt\":\"",
   write {sanitize X},
-  write {concat A}.
+  write "\"}".
+  % write "\", \"cnt\":".
+  % write {concat A},
+  % write "}".
 
 pp _ B X A :- is-name X Y, !,
-  write {concat B}, write Y, write {concat A}.
+  write {concat B}, 
+  % write "{\"id\":\"string\", \"cnt\":\"", 
+  write Y, 
+  % write "}",
+  write {concat A}.
 
 pp _ B (cdata S) A :- is_cdata S _, !,
   term_to_string S Y,
   write {concat B},
+  write "{\"id\":\"string\", \"cnt\":\"", 
   write Y,
+  write "\"}",
   write {concat A}.
 
 pp _ B X A :- write "ERROR".
@@ -219,14 +234,14 @@ write-clause (clause Loc [A|Args] (arg Body)) :-
   pi x\ is-name x A1 => write-clause (clause Loc Args (Body x)).
 write-clause (clause Loc [] C) :- !,
   write "{ \"id\":\"clause\", \n\"title\":\"",
-    term_to_string Loc LocS, write LocS,
+    term_to_string Loc LocS, write {escape-double-tick LocS},
     write "\", \n\"cnt\":{",
   cur-int 0 =>
   if (C = app [const ":-"|_])
      (pp 0 [] C [])
-     (write "\"hyp\":[],",
+     (write "\"hyp\":[],\n \"args\":[",
        pp 0 [] C [],
-      write "}"),
+      write "]}"),
   write "}\n".
 
 pred filter-out i:list A, i:(A -> prop), o:list A.
@@ -240,9 +255,9 @@ write-html P F R :-
   filter-out P (c\
     sigma Loc LocS \ c = (clause Loc _ _), 
     term_to_string Loc LocS, not(R LocS)) PF,
-  write "<body><pre>{\n\"clauses\":[\n",
-  iter write-clause PF,
-  write "]}</pre></body>".
+  write "{\n\"clauses\":[\n",
+  iter (x\ write-clause x, write ",\n") PF,
+  write "]}".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -260,7 +275,6 @@ type main prop.
 
 % entry point from the command line
 main [IN,OUT|FILTERS] :- !,
-  coq.say "CIAO",
   quote_syntax IN "main" P _,
   main-quoted P OUT FILTERS.
 

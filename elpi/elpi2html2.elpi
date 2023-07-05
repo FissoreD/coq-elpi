@@ -201,7 +201,7 @@ pp _ B (const "discard") A :-
 
 pp _ B (const X) A :-
   write {concat B},
-  write "{\"id\":\"prop\", \"cnt\":\"",
+  write "{\"id\":\"const\", \"cnt\":\"",
   write X,
   write "\"}".
 

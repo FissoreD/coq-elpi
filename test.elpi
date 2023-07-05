@@ -1,0 +1,5 @@
+pred escape-double-tick i:string, o:string.
+escape-double-tick A B :- 
+  rex.replace "\"" "\\\"" A B.
+
+main :- escape-double-tick "\"ciao\"" B, print B.

@@ -19,6 +19,11 @@ iter-sep _ _ _ [] _.
 iter-sep _ S P [X] A :- !, P [] X A.
 iter-sep B S P [X|XS] A :- P B X [], write S, iter-sep [] S P XS A.
 
+pred iter-sep-end i:list string, i:string, i:string, i:(list string -> A -> list string -> prop), i:list A, i:list string.
+iter-sep-end _ _ _ [] _.
+iter-sep-end _ S End P [X] A :- !, P [] X A.
+iter-sep-end B S End P [X|XS] A :- P B X [], write S, iter-sep-end [] S End P XS A, write End.
+
 pred iter-sep2 i:list string, i:string, i:string, i:(list string -> A -> list string -> prop), i:list A, i:list string.
 iter-sep2 _ _ _  _ [] _.
 iter-sep2 _ S _  P [X] A :- !, P [] X A.
@@ -121,7 +126,7 @@ pp L B (app [ const ":-" , Hd , Hyps ]) A :-
   if (Hyps = app [ const "," , const "!" | Rest])
      (Hyps2 = app [ const "," | Rest], NeckCut = " neckcut")
      (Hyps2 = Hyps, NeckCut = ""),
-  write "\"hyp\":[\n",
+  write "{\"hyp\":[\n",
   pp 59 B1 Hyps2 [],
   write "],\n",
   Concl is "\"args\":[",
@@ -145,7 +150,7 @@ pp-quantifier-block B C T Args A :-
   iter-sep [] ", " (b\ x\ a\ write "", write x, write "") {rev Args} [],
   write "],\n\"body\":[",
   pp 60 [] T A,
-  write "]},".
+  write "]}}".
 
 pred write-math-quantifier i:list string, i:string.
 write-math-quantifier B "pi"    :- write {concat B}, write "\"forall\"".
@@ -153,33 +158,36 @@ write-math-quantifier B "sigma" :- write {concat B}, write "\"exists\"".
 
 pp L B (app [ const "," | Args ]) A :-
   par? L 60 B A B1 A1,
-  iter-sep2 B1 "" "," (pp 59) Args A1.
+  iter-sep2 B1 "," "" (pp 59) Args A1.
 
 pp L B (app [ const "::", HD, TL ]) A :-
   par? L 99 B A B1 A1,
   grab-list TL Args Last,
-  write "{\"id\":\"list\", \"cnt\":{",
-  write "\"l\":[",
-  iter-sep2 B1 "" "," (pp 61) [HD|Args] [],
+  write "{\"id\":\"list\", \"cnt\":[",
+  write "{\"l\":[",
+  iter-sep2 B1 "," "" (pp 61) [HD|Args] [],
   write "]",
   if (Last = some X) (write ",\"tl\":", pp 0 [] X [], write "") (true),
-  write "}}", write {concat A1}.
+  write "}]}", write {concat A1}.
 
 pp L B (app Args) A :-
   par? L 65 B A B1 A1,
-  iter-sep B1 ", " (pp 66) Args A1.
+  write "[",
+  % std.iter Args (x\ pp 66 ).
+  iter-sep-end B1 ", " "" (pp 66) Args A1,
+  write "]".
 
 pp L B (lam F) A :- incr-int (
   par? L 70 B A B1 A1,
   new_int I,
     pi x\ 
-    write "\"id\": \"quantification\",\n \"cnt\":{\n\"type\":\"anonymousForall\"",
-    write ",\"names\":[{",
+    write "{\"id\": \"quantification\",\n \"cnt\":{\n\"type\":\"anonymousForall\"",
+    write ",\"names\":[",
     write {concat B1},
     var-to-string x I X, write X,
-    write "}], \n\"body\":{",
+    write "], \n\"body\":[",
     is-name x X => pp 10 [] (F x) A1,
-    write "}\n").
+    write "]}}\n").
 
 pp _ B (const "!") A :- !,
   write {concat B},
@@ -194,24 +202,21 @@ pp _ B (const "discard") A :-
 pp _ B (const X) A :-
   write {concat B},
   write "{\"id\":\"prop\", \"cnt\":\"",
-  write {sanitize X},
+  write X,
   write "\"}".
-  % write "\", \"cnt\":".
-  % write {concat A},
-  % write "}".
 
 pp _ B X A :- is-name X Y, !,
   write {concat B}, 
-  % write "{\"id\":\"string\", \"cnt\":\"", 
   write Y, 
-  % write "}",
   write {concat A}.
 
 pp _ B (cdata S) A :- is_cdata S _, !,
   term_to_string S Y,
   write {concat B},
   write "{\"id\":\"string\", \"cnt\":\"", 
-  write Y,
+  % rex.replace "\\" "\\\\" Y Y',
+  rex.replace "\\\." "\\\\\." Y Y',
+  write Y',
   write "\"}",
   write {concat A}.
 
@@ -235,11 +240,11 @@ write-clause (clause Loc [A|Args] (arg Body)) :-
 write-clause (clause Loc [] C) :- !,
   write "{ \"id\":\"clause\", \n\"title\":\"",
     term_to_string Loc LocS, write {escape-double-tick LocS},
-    write "\", \n\"cnt\":{",
+    write "\", \n\"cnt\":",
   cur-int 0 =>
   if (C = app [const ":-"|_])
      (pp 0 [] C [])
-     (write "\"hyp\":[],\n \"args\":[",
+     (write "{\"hyp\":[],\n \"args\":[",
        pp 0 [] C [],
       write "]}"),
   write "}\n".
@@ -254,9 +259,10 @@ pred write-html i:list clause, i:string, i:(string -> prop).
 write-html P F R :-
   filter-out P (c\
     sigma Loc LocS \ c = (clause Loc _ _), 
-    term_to_string Loc LocS, not(R LocS)) PF,
+    term_to_string Loc LocS, not(R LocS)) [HD | TL],
   write "{\n\"clauses\":[\n",
-  iter (x\ write-clause x, write ",\n") PF,
+  write-clause HD,
+  iter (x\ write ",\n", write-clause x) TL,
   write "]}".
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

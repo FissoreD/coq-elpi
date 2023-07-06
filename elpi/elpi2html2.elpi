@@ -37,16 +37,6 @@ pred write-to o:ctype "out_stream".
 pred write i:string.
 write S :- write-to OC, output OC S.
 
-pred sanitize i:string, o:string.
-sanitize X Y :-
-  monad [
-    rex_replace "&" "&amp;",
-    rex_replace "<" "&lt;",
-    rex_replace ">" "&gt;",
-    rex_replace "\"" "&quot;",
-    rex_replace "'" "&apos;" ]
-  X Y.
-
 pred mk-name i:string, o:string.
 mk-name S1 Y :-
   Y is "{\"id\":\"var\", \"cnt\":\"" ^ S1 ^ "\"}".
@@ -94,7 +84,6 @@ infx "*".
 infx "as".
 infx ">".
 
-%    pp Level  ParensBefore   Term    ParensAfter
 pred pp i:term.
 pp (app [ const OP, Left, Right ]) :- infx OP, !,
   write "{\"id\":\"propInfix\", \"cnt\": {\"args\":[\n{\"id\":\"const\", \"cnt\":\"",
@@ -107,11 +96,9 @@ pp (app [ const ":-" , Hd , Hyps ]) :-
      (Hyps2 = app [ const "," | Rest], NeckCut = " neckcut")
      (Hyps2 = Hyps, NeckCut = ""),
   write "{\"id\":\"clause\", \"cnt\":{\"hyp\":[\n",
-  pp Hyps2,
-  write "],\n",
+  pp Hyps2, write "],\n",
   Concl is "\"args\":[",
-  write Concl,
-  pp Hd,
+  write Concl, pp Hd,
   write "]}}".
 
 pp (app [ const C, lam _ ] as T) :- (C = "pi"; C = "sigma"), !,
@@ -123,16 +110,12 @@ pp-quantifier-block C (app [ const C, lam F ]) Args :- !, incr-int (
         is-name x X => pp-quantifier-block C (F x) [X|Args]).
 pp-quantifier-block C T Args :-
   write "{\"id\": \"quantification\",\n \"cnt\":{\n\"type\":",
-  write-math-quantifier C,
+  write C,
   write ",\"names\":[",
-  iter-sep ", " (x\ write "", write x, write "") {rev Args},
+  iter-sep ", " write {rev Args},
   write "],\n\"body\":[",
   pp T,
   write "]}}".
-
-pred write-math-quantifier i:string.
-write-math-quantifier "pi"    :- write "\"forall\"".
-write-math-quantifier "sigma" :- write "\"exists\"".
 
 pp (app [ const "," | Args ]) :-
   iter-sep2 "," "" pp Args.
@@ -152,8 +135,7 @@ pp (app Args) :-
   write "]".
 
 pp (lam F) :- incr-int (
-  new_int _,
-    pi x\ 
+  pi x\ 
     write "{\"id\": \"quantification\",\n \"cnt\":{\n\"type\":\"anonymousForall\"",
     write ",\"names\":[",
     var-to-string X, write X,

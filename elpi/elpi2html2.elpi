@@ -14,20 +14,20 @@ pred iter i:(A -> prop), o:list A.
 iter _ [].
 iter P [X|XS] :- P X, iter P XS.
 
-pred iter-sep i:list string, i:string, i:(list string -> A -> list string -> prop), i:list A, i:list string.
-iter-sep _ _ _ [] _.
-iter-sep _ S P [X] A :- !, P [] X A.
-iter-sep B S P [X|XS] A :- P B X [], write S, iter-sep [] S P XS A.
+pred iter-sep i:string, i:(A -> prop), i:list A.
+iter-sep _ _ [].
+iter-sep S P [X] :- !, P X.
+iter-sep S P [X|XS] :- P X, write S, iter-sep S P XS.
 
-pred iter-sep-end i:list string, i:string, i:string, i:(list string -> A -> list string -> prop), i:list A, i:list string.
-iter-sep-end _ _ _ [] _.
-iter-sep-end _ S End P [X] A :- !, P [] X A.
-iter-sep-end B S End P [X|XS] A :- P B X [], write S, iter-sep-end [] S End P XS A, write End.
+pred iter-sep-end i:string, i:string, i:(A -> prop), i:list A.
+iter-sep-end _ _ _ [].
+iter-sep-end S End P [X] :- !, P X.
+iter-sep-end S End P [X|XS] :- P X, write S, iter-sep-end S End P XS, write End.
 
-pred iter-sep2 i:list string, i:string, i:string, i:(list string -> A -> list string -> prop), i:list A, i:list string.
-iter-sep2 _ _ _  _ [] _.
-iter-sep2 _ S _  P [X] A :- !, P [] X A.
-iter-sep2 B S S1 P [X|XS] A :- P B X [S1], write S, iter-sep2 [] S S1 P XS A.
+pred iter-sep2 i:string, i:string, i:(A -> prop), i:list A.
+iter-sep2 _ _  _ [].
+iter-sep2 S _  P [X] :- !, P X.
+iter-sep2 S S1 P [X|XS] :- P X, write S, iter-sep2 S S1 P XS.
 
 pred monad i:list (S -> S -> prop), i:S, o:S.
 monad [] X X.
@@ -148,7 +148,7 @@ pp-quantifier-block B C T Args A :-
   write "{\"id\": \"quantification\",\n \"cnt\":{\n\"type\":",
   write-math-quantifier B C,
   write ",\"names\":[",
-  iter-sep [] ", " (b\ x\ a\ write "", write x, write "") {rev Args} [],
+  iter-sep ", " (x\ write "", write x, write "") {rev Args},
   write "],\n\"body\":[",
   pp 60 [] T A,
   write "]}}".
@@ -159,14 +159,14 @@ write-math-quantifier B "sigma" :- write {concat B}, write "\"exists\"".
 
 pp L B (app [ const "," | Args ]) A :-
   par? L 60 B A B1 A1,
-  iter-sep2 B1 "," "" (pp 59) Args A1.
+  iter-sep2 "," "" (x\ pp 59 B x A) Args.
 
 pp L B (app [ const "::", HD, TL ]) A :-
   par? L 99 B A B1 A1,
   grab-list TL Args Last,
   write "{\"id\":\"list\", \"cnt\":",
   write "{\"l\":[",
-  iter-sep2 B1 "," "" (pp 61) [HD|Args] [],
+  iter-sep2 "," "" (x\ pp 59 B x A) [HD|Args],
   write "]",
   if (Last = some X) (write ",\"tl\":", pp 0 [] X [], write "") (true),
   write "}}", write {concat A1}.
@@ -175,7 +175,7 @@ pp L B (app Args) A :-
   par? L 65 B A B1 A1,
   write "[",
   % std.iter Args (x\ pp 66 ).
-  iter-sep-end B1 ", " "" (pp 66) Args A1,
+  iter-sep-end ", " "" (x\ pp 59 B x A) Args,
   write "]".
 
 pp L B (lam F) A :- incr-int (

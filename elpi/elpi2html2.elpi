@@ -16,12 +16,12 @@ iter P [X|XS] :- P X, iter P XS.
 
 pred iter-sep i:string, i:(A -> prop), i:list A.
 iter-sep _ _ []. 
-iter-sep S P [X] :- !, P X.
+iter-sep _ P [X] :- !, P X.
 iter-sep S P [X|XS] :- P X, write S, iter-sep S P XS.
 
 pred iter-sep2 i:string, i:string, i:(A -> prop), i:list A.
 iter-sep2 _ _  _ [].
-iter-sep2 S _  P [X] :- !, P X.
+iter-sep2 _ _  P [X] :- !, P X.
 iter-sep2 S S1 P [X|XS] :- P X, write S, iter-sep2 S S1 P XS.
 
 pred monad i:list (S -> S -> prop), i:S, o:S.
@@ -47,37 +47,31 @@ sanitize X Y :-
     rex_replace "'" "&apos;" ]
   X Y.
 
-pred mk-name i:string, i:term, o:string.
-mk-name S1 I Y :-
+pred mk-name i:string, o:string.
+mk-name S1 Y :-
   Y is "{\"id\":\"var\", \"cnt\":\"" ^ S1 ^ "\"}".
 
 pred cur-int o:int.
 pred incr-int i:prop.
 incr-int P :- cur-int J, I is J + 1, (cur-int I :- !) => P.
 
-pred var-to-string i:A, i:B, o:string.
-var-to-string X I Y :-
+pred var-to-string o:string.
+var-to-string Y :-
   cur-int J, S1 is "x " ^ {term_to_string J},
-  mk-name S1 I Y.
-pred uvar-to-string i:A, i:B, o:string.
-uvar-to-string X I Y :-
+  mk-name S1 Y.
+pred uvar-to-string o:string.
+uvar-to-string Y :-
   cur-int J, S1 is "X " ^ {term_to_string J} ^ "",
-  mk-name S1 I Y.
-pred name-to-string i:string, i:B, o:string.
-name-to-string X0 I Y :-
+  mk-name S1 Y.
+pred name-to-string i:string, o:string.
+name-to-string X0 Y :-
   if (rex_match "^_" X0) (X = "_") (X = X0),
   rex_replace "^\\([A-Za-z]+\\)_?\\([0-9]+\\)_?$" "\\1 \\2" X S1,
-  mk-name S1 I Y.
+  mk-name S1 Y.
 
 pred concat i:list string, o:string.
 concat [] "".
 concat [X|XS] S :- concat XS Res, S is X ^ Res.
-
-pred par? i:int, i:int, i:list string, i:list string, o:list string, o:list string.
-par? CL PL Open Close Open1 Close1 :-
-  if (CL =< PL)
-     (Open1 = Open, Close1 = Close)
-     (Open1 = [""|Open], Close1 = [""|Close]).
 
 kind option type -> type.
 type some A -> option A.
@@ -88,40 +82,44 @@ grab-list (const "[]") [] none.
 grab-list (app [ const "::", X, XS]) [ X | R ] T :- grab-list XS R T.
 grab-list X [] (some X).
 
-pred pp-compound i:prop.
-pp-compound P :- P.
+pred infx i:string.
+infx "<".
+infx "=>".
+infx "=".
+infx "^".
+infx "is".
+infx ";".
+infx "+".
+infx "*".
+infx "as".
+infx ">".
 
 %    pp Level  ParensBefore   Term    ParensAfter
-pred pp i:int, i:list string, i:term, i:list string.
-pp L B (app [ const OP, Left, Right ]) A :- !,
-  par? L LOP B A B1 A1, 
+pred pp i:term.
+pp (app [ const OP, Left, Right ]) :- infx OP, !,
   write "{\"id\":\"propInfix\", \"cnt\": {\"args\":[\n{\"id\":\"const\", \"cnt\":\"",
   write OP, write "\"}, ",
-  pp-compound (pp PL B1 Left  []), write ",",
-  pp-compound (pp PR [] Right A1),
+  pp Left, write ",", pp Right,
   write "]}}".
 
-pp L B (app [ const ":-" , Hd , Hyps ]) A :-
-  par? L 60 B A B1 A1,
+pp (app [ const ":-" , Hd , Hyps ]) :-
   if (Hyps = app [ const "," , const "!" | Rest])
      (Hyps2 = app [ const "," | Rest], NeckCut = " neckcut")
      (Hyps2 = Hyps, NeckCut = ""),
   write "{\"id\":\"clause\", \"cnt\":{\"hyp\":[\n",
-  pp 59 B1 Hyps2 [],
+  pp Hyps2,
   write "],\n",
   Concl is "\"args\":[",
   write Concl,
-  pp 59 [] Hd A1,
+  pp Hd,
   write "]}}".
 
-pp L B (app [ const C, lam _ ] as T) A :- (C = "pi"; C = "sigma"), !,
-  par? L 60 B A B1 A1,
+pp (app [ const C, lam _ ] as T) :- (C = "pi"; C = "sigma"), !,
   pp-quantifier-block C T [].
 
 pred pp-quantifier-block  i:string, i:term, i:list string.
 pp-quantifier-block C (app [ const C, lam F ]) Args :- !, incr-int (
-  new_int I,
-  pi x\ if (C = "pi") (var-to-string x I X) (uvar-to-string x I X),
+  pi x\ if (C = "pi") (var-to-string X) (uvar-to-string X),
         is-name x X => pp-quantifier-block C (F x) [X|Args]).
 pp-quantifier-block C T Args :-
   write "{\"id\": \"quantification\",\n \"cnt\":{\n\"type\":",
@@ -129,78 +127,62 @@ pp-quantifier-block C T Args :-
   write ",\"names\":[",
   iter-sep ", " (x\ write "", write x, write "") {rev Args},
   write "],\n\"body\":[",
-  pp 60 [] T [],
+  pp T,
   write "]}}".
 
 pred write-math-quantifier i:string.
 write-math-quantifier "pi"    :- write "\"forall\"".
 write-math-quantifier "sigma" :- write "\"exists\"".
 
-pp L B (app [ const "," | Args ]) A :-
-  par? L 60 B A B1 A1,
-  iter-sep2 "," "" (x\ pp 59 B x A) Args.
+pp (app [ const "," | Args ]) :-
+  iter-sep2 "," "" pp Args.
 
-pp L B (app [ const "::", HD, TL ]) A :-
-  par? L 99 B A B1 A1,
+pp (app [ const "::", HD, TL ]) :-
   grab-list TL Args Last,
   write "{\"id\":\"list\", \"cnt\":",
   write "{\"l\":[",
-  iter-sep2 "," "" (x\ pp 59 B x A) [HD|Args],
+  iter-sep2 "," "" pp [HD|Args],
   write "]",
-  if (Last = some X) (write ",\"tl\":", pp 0 [] X [], write "") (true),
-  write "}}", write {concat A1}.
+  if (Last = some X) (write ",\"tl\":", pp X) (true),
+  write "}}".
 
-pp L B (app Args) A :-
-  par? L 65 B A B1 A1,
+pp (app Args) :-
   write "[",
-  % std.iter Args (x\ pp 66 ).
-  iter-sep ", " (x\ pp 59 B x A) Args,
+  iter-sep ", " pp Args,
   write "]".
 
-pp L B (lam F) A :- incr-int (
-  par? L 70 B A B1 A1,
-  new_int I,
+pp (lam F) :- incr-int (
+  new_int _,
     pi x\ 
     write "{\"id\": \"quantification\",\n \"cnt\":{\n\"type\":\"anonymousForall\"",
     write ",\"names\":[",
-    write {concat B1},
-    var-to-string x I X, write X,
+    var-to-string X, write X,
     write "], \n\"body\":[",
-    is-name x X => pp 10 [] (F x) A1,
+    is-name x X => pp (F x),
     write "]}}\n").
 
-pp _ B (const "!") A :- !,
-  write {concat B},
-  write "{\"id\":\"cut\"}",
-  write {concat A}.
+pp (const "!")  :- !,
+  write "{\"id\":\"cut\"}".
 
-pp _ B (const "discard") A :-
-  write {concat B},
-  write "{\"id\":\"discard\"}",
-  write {concat A}.
+pp (const "discard") :-
+  write "{\"id\":\"discard\"}".
 
-pp _ B (const X) A :-
-  write {concat B},
+pp (const X) :-
   write "{\"id\":\"const\", \"cnt\":\"",
   write X,
   write "\"}".
 
-pp _ B X A :- is-name X Y, !,
-  write {concat B}, 
-  write Y, 
-  write {concat A}.
+pp X :- is-name X Y, !,
+  write Y.
 
-pp _ B (cdata S) A :- is_cdata S _, !,
+pp (cdata S) :- is_cdata S _, !,
   term_to_string S Y,
-  write {concat B},
   write "{\"id\":\"string\", \"cnt\":\"", 
-  % rex.replace "\\" "\\\\" Y Y',
   rex.replace "\\\." "\\\\\." Y Y',
   write Y',
-  write "\"}",
-  write {concat A}.
+  write "\"}".
 
-pp _ B X A :- write "ERROR".
+pp _ :- write "ERROR".
 
 pred hd-symbol i:term.
 hd-symbol (app [ const ":-", H, _ ]) :- hd-symbol H.
@@ -212,10 +194,10 @@ pred write-clause i:clause.
 write-clause (clause Loc [] (arg Body)) :-
   new_int I, 
   (pi x\ X is "X" ^ {term_to_string I}),
-  name-to-string X I A1,
+  name-to-string X A1,
   pi x\ is-name x A1 => write-clause (clause Loc [] (Body x)).
 write-clause (clause Loc [A|Args] (arg Body)) :-
-  new_int I, name-to-string A I A1,
+  name-to-string A A1,
   pi x\ is-name x A1 => write-clause (clause Loc Args (Body x)).
 write-clause (clause Loc [] C) :- !,
   write "{ \"id\":\"clause\", \n\"title\":\"",
@@ -223,9 +205,9 @@ write-clause (clause Loc [] C) :- !,
     write "\", \n\"cnt\":",
   cur-int 0 =>
   if (C = app [const ":-"|_])
-     (pp 0 [] C [])
+     (pp C)
      (write "{\"id\":\"clause\", \"cnt\":{\"hyp\":[],\n \"args\":[",
-       pp 0 [] C [],
+       pp C,
       write "]}}"),
   write "}\n".
 
@@ -235,8 +217,8 @@ filter-out [X|XS] P R :-
   if (P X) (R = [X | RS]) (R = RS),
   filter-out XS P RS.
 
-pred write-html i:list clause, i:string, i:(string -> prop).
-write-html P F R :-
+pred write-html i:list clause, i:(string -> prop).
+write-html P R :-
   filter-out P (c\
     sigma Loc LocS \ c = (clause Loc _ _), 
     term_to_string Loc LocS, not(R LocS)) [HD | TL],
@@ -253,7 +235,7 @@ pred main-quoted i:list clause, i:string, i:list string.
 main-quoted P OUT FILTERS :-
   open_out OUT OC,
   R = (x\exists FILTERS (y\ rex_match y x)),
-  write-to OC => write-html P OUT R,
+  write-to OC => write-html P R,
   close_out OC.
 
 pred main i:list string.

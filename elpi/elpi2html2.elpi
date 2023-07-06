@@ -62,16 +62,16 @@ incr-int P :- cur-int J, I is J + 1, (cur-int I :- !) => P.
 
 pred var-to-string i:A, i:B, o:string.
 var-to-string X I Y :-
-  cur-int J, S1 is "x<sub>" ^ {term_to_string J} ^ "</sub>",
+  cur-int J, S1 is "x " ^ {term_to_string J},
   mk-name S1 I Y.
 pred uvar-to-string i:A, i:B, o:string.
 uvar-to-string X I Y :-
-  cur-int J, S1 is "X<sub>" ^ {term_to_string J} ^ "</sub>",
+  cur-int J, S1 is "X " ^ {term_to_string J} ^ "",
   mk-name S1 I Y.
 pred name-to-string i:string, i:B, o:string.
 name-to-string X0 I Y :-
   if (rex_match "^_" X0) (X = "_") (X = X0),
-  rex_replace "^\\([A-Za-z]+\\)_?\\([0-9]+\\)_?$" "\\1<sub>\\2</sub>" X S1,
+  rex_replace "^\\([A-Za-z]+\\)_?\\([0-9]+\\)_?$" "\\1 \\2" X S1,
   mk-name S1 I Y.
 
 pred concat i:list string, o:string.
@@ -97,6 +97,7 @@ grab-list X [] (some X).
 pred infx i:string, o:int, o:string, o:int, o:int.
 % TODO: fix precendences
 infx "<"  60 "&nbsp;&lt;&nbsp;"      60 60.
+infx ">"  60 "&nbsp;&lt;&nbsp;"      60 60.
 infx "=>" 60 "&nbsp;<b>⇒</b>&nbsp;"  59 59.
 infx "="  60 "&nbsp;=&nbsp;"           70 70.
 infx "^"  60 "&nbsp;^&nbsp;"           60 60.
@@ -115,24 +116,24 @@ pp-compound P :- P.
 pred pp i:int, i:list string, i:term, i:list string.
 pp L B (app [ const OP, Left, Right ]) A :- infx OP LOP S PL PR, !,
   par? L LOP B A B1 A1, 
-  write "{\"id\":\"clause\", \"isInfix\":1, \"cnt\":[\n{\"name\":\"",
+  write "{\"id\":\"propInfix\", \"cnt\": {\"args\":[\n{\"id\":\"const\", \"cnt\":\"",
   write OP, write "\"}, ",
   pp-compound (pp PL B1 Left  []), write ",",
   pp-compound (pp PR [] Right A1),
-  write "]}".
+  write "]}}".
 
 pp L B (app [ const ":-" , Hd , Hyps ]) A :-
   par? L 60 B A B1 A1,
   if (Hyps = app [ const "," , const "!" | Rest])
      (Hyps2 = app [ const "," | Rest], NeckCut = " neckcut")
      (Hyps2 = Hyps, NeckCut = ""),
-  write "{\"hyp\":[\n",
+  write "{\"id\":\"clause\", \"cnt\":{\"hyp\":[\n",
   pp 59 B1 Hyps2 [],
   write "],\n",
   Concl is "\"args\":[",
   write Concl,
   pp 59 [] Hd A1,
-  write "]}".
+  write "]}}".
 
 pp L B (app [ const C, lam _ ] as T) A :- (C = "pi"; C = "sigma"), !,
   par? L 60 B A B1 A1,
@@ -163,12 +164,12 @@ pp L B (app [ const "," | Args ]) A :-
 pp L B (app [ const "::", HD, TL ]) A :-
   par? L 99 B A B1 A1,
   grab-list TL Args Last,
-  write "{\"id\":\"list\", \"cnt\":[",
+  write "{\"id\":\"list\", \"cnt\":",
   write "{\"l\":[",
   iter-sep2 B1 "," "" (pp 61) [HD|Args] [],
   write "]",
   if (Last = some X) (write ",\"tl\":", pp 0 [] X [], write "") (true),
-  write "}]}", write {concat A1}.
+  write "}}", write {concat A1}.
 
 pp L B (app Args) A :-
   par? L 65 B A B1 A1,
@@ -244,9 +245,9 @@ write-clause (clause Loc [] C) :- !,
   cur-int 0 =>
   if (C = app [const ":-"|_])
      (pp 0 [] C [])
-     (write "{\"hyp\":[],\n \"args\":[",
+     (write "{\"id\":\"clause\", \"cnt\":{\"hyp\":[],\n \"args\":[",
        pp 0 [] C [],
-      write "]}"),
+      write "]}}"),
   write "}\n".
 
 pred filter-out i:list A, i:(A -> prop), o:list A.

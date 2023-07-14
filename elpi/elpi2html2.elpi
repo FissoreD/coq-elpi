@@ -74,15 +74,31 @@ grab-list X [] (some X).
 
 pred infx i:string.
 infx "<".
+infx ">".
+infx ">=".
+infx "=<".
 infx "=>".
 infx "=".
 infx "^".
-infx "is".
-infx ";".
-infx "+".
 infx "*".
+infx "/".
+infx "+".
+infx "-".
+infx ";".
+infx "is".
 infx "as".
-infx ">".
+infx "i<".
+infx "i>".
+infx "i=<".
+infx "i>=".
+infx "r<".
+infx "r>".
+infx "r=<".
+infx "r>=".
+infx "s<".
+infx "s>".
+infx "s=<".
+infx "s>=".
 
 pred pp i:term.
 pp (app [ const OP, Left, Right ]) :- infx OP, !,
@@ -95,11 +111,11 @@ pp (app [ const ":-" , Hd , Hyps ]) :-
   if (Hyps = app [ const "," , const "!" | Rest])
      (Hyps2 = app [ const "," | Rest], NeckCut = " neckcut")
      (Hyps2 = Hyps, NeckCut = ""),
-  write "{\"id\":\"clause\", \"cnt\":{\"hyp\":[\n",
-  pp Hyps2, write "],\n",
-  Concl is "\"args\":[",
+  write "{\"id\":\"clause\", \"cnt\":{\"hyp\":\n",
+  pp Hyps2, write ",\n",
+  Concl is "\"args\":",
   write Concl, pp Hd,
-  write "]}}".
+  write "}}".
 
 pp (app [ const C, lam _ ] as T) :- (C = "pi"; C = "sigma"), !,
   pp-quantifier-block C T [].
@@ -109,16 +125,17 @@ pp-quantifier-block C (app [ const C, lam F ]) Args :- !, incr-int (
   pi x\ if (C = "pi") (var-to-string X) (uvar-to-string X),
         is-name x X => pp-quantifier-block C (F x) [X|Args]).
 pp-quantifier-block C T Args :-
-  write "{\"id\": \"quantification\",\n \"cnt\":{\n\"type\":",
+  write "{\"id\": \"quantification\",\n \"cnt\":{\n\"type\":\"",
   write C,
-  write ",\"names\":[",
+  write "\",\"names\":[",
   iter-sep ", " write {rev Args},
   write "],\n\"body\":[",
   pp T,
   write "]}}".
 
 pp (app [ const "," | Args ]) :-
-  iter-sep2 "," "" pp Args.
+  write "[{\"id\":\"comma\", \"cnt\":[",
+  iter-sep2 "," "" pp Args, write "]}]".
 
 pp (app [ const "::", HD, TL ]) :-
   grab-list TL Args Last,
@@ -130,9 +147,9 @@ pp (app [ const "::", HD, TL ]) :-
   write "}}".
 
 pp (app Args) :-
-  write "[",
+  write "[{\"id\":\"prop\", \"cnt\":[",
   iter-sep ", " pp Args,
-  write "]".
+  write "]}]".
 
 pp (lam F) :- incr-int (
   pi x\ 
@@ -157,7 +174,14 @@ pp (const X) :-
 pp X :- is-name X Y, !,
   write Y.
 
-pp (cdata S) :- is_cdata S _, !,
+pp (cdata S) :- primitive? S "string", !,
+  term_to_string S Y,
+  write "{\"id\":\"string\", \"cnt\":\"\\\"", 
+  rex.replace "\\\." "\\\\\." Y Y',
+  write Y',
+  write "\\\"\"}".
+
+pp (cdata S) :- primitive? S _, !,
   term_to_string S Y,
   write "{\"id\":\"string\", \"cnt\":\"", 
   rex.replace "\\\." "\\\\\." Y Y',
@@ -188,9 +212,9 @@ write-clause (clause Loc [] C) :- !,
   cur-int 0 =>
   if (C = app [const ":-"|_])
      (pp C)
-     (write "{\"id\":\"clause\", \"cnt\":{\"hyp\":[],\n \"args\":[",
+     (write "{\"id\":\"clause\", \"cnt\":{\"hyp\":[],\n \"args\":",
        pp C,
-      write "]}}"),
+      write "}}"),
   write "}\n".
 
 pred filter-out i:list A, i:(A -> prop), o:list A.

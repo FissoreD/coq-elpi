@@ -99,6 +99,7 @@ infx "s<".
 infx "s>".
 infx "s=<".
 infx "s>=".
+infx "==".
 
 pred pp i:term.
 pp (app [ const OP, Left, Right ]) :- infx OP, !,
@@ -109,10 +110,11 @@ pp (app [ const OP, Left, Right ]) :- infx OP, !,
 
 pp (app [ const ":-" , Hd , Hyps ]) :-
   if (Hyps = app [ const "," , const "!" | Rest])
-     (Hyps2 = app [ const "," | Rest], NeckCut = " neckcut")
-     (Hyps2 = Hyps, NeckCut = ""),
+     (Hyps2 = app [ const "," | Rest], NeckCut = "true")
+     (Hyps2 = Hyps, NeckCut = "false"),
   write "{\"id\":\"clause\", \"cnt\":{\"hyp\":\n",
   pp Hyps2, write ",\n",
+  write "\"isNeckcut\":", write NeckCut, write ",\n",
   Concl is "\"args\":",
   write Concl, pp Hd,
   write "}}".
@@ -153,7 +155,7 @@ pp (app Args) :-
 
 pp (lam F) :- incr-int (
   pi x\ 
-    write "{\"id\": \"quantification\",\n \"cnt\":{\n\"type\":\"anonymousForall\"",
+    write "{\"id\": \"quantification\",\n \"cnt\":{\n\"type\":\"binder\"",
     write ",\"names\":[",
     var-to-string X, write X,
     write "], \n\"body\":[",
@@ -206,7 +208,7 @@ write-clause (clause Loc [A|Args] (arg Body)) :-
   name-to-string A A1,
   pi x\ is-name x A1 => write-clause (clause Loc Args (Body x)).
 write-clause (clause Loc [] C) :- !,
-  write "{ \"id\":\"clause\", \n\"title\":\"",
+  write "{ \"id\":\"card\", \n\"title\":\"",
     term_to_string Loc LocS, write {escape-double-tick LocS},
     write "\", \n\"cnt\":",
   cur-int 0 =>

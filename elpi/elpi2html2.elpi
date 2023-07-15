@@ -208,7 +208,9 @@ write-clause (clause Loc [A|Args] (arg Body)) :-
   name-to-string A A1,
   pi x\ is-name x A1 => write-clause (clause Loc Args (Body x)).
 write-clause (clause Loc [] C) :- !,
-  write "{ \"id\":\"card\", \n\"title\":\"",
+  write "{ \"id\":\"card\", \n\"predicate\":\"",
+  hd-symbol C,
+  write "\",\n\"title\":\"",
     term_to_string Loc LocS, write {escape-double-tick LocS},
     write "\", \n\"cnt\":",
   cur-int 0 =>

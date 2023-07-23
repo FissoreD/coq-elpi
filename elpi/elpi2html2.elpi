@@ -37,27 +37,27 @@ pred write-to o:ctype "out_stream".
 pred write i:string.
 write S :- write-to OC, output OC S.
 
-pred mk-name i:string, o:string.
-mk-name S1 Y :-
-  Y is "{\"id\":\"var\", \"cnt\":\"" ^ S1 ^ "\"}".
+pred mk-name i:string, i:int, o:string.
+mk-name S1 I Y :-
+  Y is "{\"id\":\"var\", \"cnt\": {\"name\":\"" ^ S1 ^ "\", \"varId\":" ^ {term_to_string I} ^ "}}".
 
 pred cur-int o:int.
 pred incr-int i:prop.
 incr-int P :- cur-int J, I is J + 1, (cur-int I :- !) => P.
 
-pred var-to-string o:string.
-var-to-string Y :-
+pred var-to-string i:int, o:string.
+var-to-string I Y :-
   cur-int J, S1 is "x " ^ {term_to_string J},
-  mk-name S1 Y.
-pred uvar-to-string o:string.
-uvar-to-string Y :-
+  mk-name S1 I Y.
+pred uvar-to-string i:int, o:string.
+uvar-to-string I Y :-
   cur-int J, S1 is "X " ^ {term_to_string J} ^ "",
-  mk-name S1 Y.
-pred name-to-string i:string, o:string.
-name-to-string X0 Y :-
+  mk-name S1 I Y.
+pred name-to-string i:string, i:int, o:string.
+name-to-string X0 I Y :-
   if (rex_match "^_" X0) (X = "_") (X = X0),
   rex_replace "^\\([A-Za-z]+\\)_?\\([0-9]+\\)_?$" "\\1 \\2" X S1,
-  mk-name S1 Y.
+  mk-name S1 I Y.
 
 pred concat i:list string, o:string.
 concat [] "".
@@ -124,7 +124,8 @@ pp (app [ const C, lam _ ] as T) :- (C = "pi"; C = "sigma"), !,
 
 pred pp-quantifier-block  i:string, i:term, i:list string.
 pp-quantifier-block C (app [ const C, lam F ]) Args :- !, incr-int (
-  pi x\ if (C = "pi") (var-to-string X) (uvar-to-string X),
+  new_int I,
+  pi x\ if (C = "pi") (var-to-string I X) (uvar-to-string I X),
         is-name x X => pp-quantifier-block C (F x) [X|Args]).
 pp-quantifier-block C T Args :-
   write "{\"id\": \"quantification\",\n \"cnt\":{\n\"type\":\"",
@@ -154,10 +155,11 @@ pp (app Args) :-
   write "]}]".
 
 pp (lam F) :- incr-int (
+  new_int I,
   pi x\ 
     write "{\"id\": \"quantification\",\n \"cnt\":{\n\"type\":\"binder\"",
     write ",\"names\":[",
-    var-to-string X, write X,
+    var-to-string I X, write X,
     write "], \n\"body\":[",
     is-name x X => pp (F x),
     write "]}}\n").
@@ -202,10 +204,10 @@ pred write-clause i:clause.
 write-clause (clause Loc [] (arg Body)) :-
   new_int I, 
   (pi x\ X is "X" ^ {term_to_string I}),
-  name-to-string X A1,
+  name-to-string X I A1,
   pi x\ is-name x A1 => write-clause (clause Loc [] (Body x)).
 write-clause (clause Loc [A|Args] (arg Body)) :-
-  name-to-string A A1,
+  new_int I, name-to-string A I A1,
   pi x\ is-name x A1 => write-clause (clause Loc Args (Body x)).
 write-clause (clause Loc [] C) :- !,
   write "{ \"id\":\"card\", \n\"predicate\":\"",

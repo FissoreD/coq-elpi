@@ -77,7 +77,7 @@ def buildTree(len):
 
 accumulate = """
 Elpi Accumulate TC_solver lp:{{
-  :after "firstHook"
+:before "999"
   tc {{:gref Inj}} {{Inj lp:R1 lp:R1 (@compose lp:A lp:A lp:A lp:L lp:R)}} Sol :-
     L = R, !,
     tc {{:gref Inj}} {{Inj lp:R1 lp:R1 lp:L}} InjL,
@@ -87,27 +87,58 @@ Elpi Accumulate TC_solver lp:{{
 
 sameInjFun = """
 Elpi Accumulate TC_solver lp:{{
-  :after "firstHook"
-  tc-Inj A B RA RB {{@compose lp:A lp:A lp:A lp:FL lp:FL}} Sol :- !, 
-    tc-Inj A B RA RB FL Sol1, 
-    coq.typecheck A TA ok,
-    coq.typecheck RA TRA ok,
-    coq.typecheck FL TFL ok,
+:before "999"
+  tc-Inj A A RA RA {{@compose lp:A lp:A lp:A lp:LC lp:LC}} Sol :- !,
+    tc-Inj A A RA RA LC Sol1, 
+    coq.typecheck LC TLC ok,
     coq.typecheck Sol1 TSol1 ok,
     Sol = {{
-      let a : lp:TA := lp:A in 
       let sol : lp:TSol1 := lp:Sol1 in 
-      let ra : lp:TRA := lp:RA in 
-      let fl : lp:TFL := lp:FL in 
-      @compose_inj a a a ra ra ra fl fl sol sol}}.
+      let fl : lp:TLC := lp:LC in 
+      @compose_inj lp:A lp:A lp:A lp:RA lp:RA lp:RA fl fl sol sol}}.
 }}.
 Elpi Typecheck TC_solver. 
+"""
+
+sameInjFun2 = """
+Elpi Accumulate TC_solver lp:{{
+:before "999"
+tc-Inj A A RA RA {{compose lp:LF lp:LF}} {{@compose_inj lp:A lp:A lp:A lp:RA lp:RA lp:RA lp:LF lp:LF lp:SolLF lp:SolLF}} :- !,
+  tc-Inj A A RA RA LF SolLF.
+}}.
+Elpi Typecheck TC_solver. 
+"""
+
+sameInjFun3 = """
+Elpi Accumulate TC_solver lp:{{
+  :before "999"
+  tc-Inj A B RA RB {{@compose lp:A lp:B lp:C lp:LC lp:LC}} {{
+      let sol : @Inj lp:A lp:A lp:RA lp:RA lp:LC := lp:Sol1 in 
+      let fl : lp:A -> lp:A := lp:LC in 
+      @compose_inj lp:A lp:B lp:C lp:RA lp:RA lp:RB fl fl sol sol}} :- 
+    tc-Inj A B RA RB LC Sol1.
+}}.
+Elpi Typecheck TC_solver. 
+"""
+
+sameInjFun4 = """
+Elpi Accumulate TC_solver lp:{{
+  :after "0"
+  tc-Inj A B RA RB {{@compose lp:A lp:AB lp:B lp:LC lp:RC}} {{@compose_inj lp:A lp:AB lp:B lp:RA lp:RAB lp:RB lp:LC lp:RC lp:Sol1 lp:Sol2}} :- 
+    !,
+    tc-Inj A AB RA RAB LC Sol1, 
+    tc-Inj AB B RAB RB RC Sol2.
+
+  :after "0"
+  tc-Inj _ _ _ _  {{f}} {{h}} :- !.
+}}.
+Elpi Typecheck TC_solver.  
 """
 
 def writeFile(fileName: str, composeLen: int, isCoq: bool):
     PREAMBLE = f"""\
 From elpi.apps.tc.tests Require Import {"stdppInjClassic" if isCoq else "stdppInj"}.
-{"" if isCoq else 'Elpi TC_solver. Set TimeRefine. Set TimeTC. Set Debug "elpitime". ' + ""}
+{"" if isCoq else 'Elpi TC_solver. Set TimeRefine. Set TimeTC. Set Debug "elpitime". ' + sameInjFun2}
 """
     GOAL = buildTree(composeLen)
     with open(fileName + ".v", "w") as fd:

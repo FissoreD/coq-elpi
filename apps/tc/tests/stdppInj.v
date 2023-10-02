@@ -225,7 +225,7 @@ Notation "` x" := (proj1_sig x) (at level 10, format "` x") : stdpp_scope.
 (* Elpi AddInstances Inj ignoreInstances compose_inj. *)
 Elpi Override TC TC_solver Only Inj.
 
-Elpi AddAllInstances.
+Elpi AddAllInstances compose_inj.
 
 Elpi Accumulate TC_solver lp:{{
   tc-Inj A B RA RB F X :-
@@ -254,13 +254,8 @@ Elpi Accumulate tc.db lp:{{
 }}.
 Elpi Typecheck TC_solver.
 
-Elpi Query TC_solver lp:{{
-  std.forall [{{:gref compose_inj}}, {{:gref h}}] 
-    (x\ sigma C\
-      compile x _ _ C,
-      add-tc-db _ (after "lastHook") C
-    ).
-}}.
+Elpi AddInstances 1000 h.
+Elpi AddInstances 1000 compose_inj.
 
 Goal Inj eq eq (compose (@id nat) id).
 apply _.

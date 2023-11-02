@@ -42,7 +42,7 @@ add-tc-db ClauseName Graft PR :-
 
 % takes a tc-instance and return the gref of the inst
 pred inst->gref i:tc-instance, o:gref.
-inst->gref (tc-instance Res _) Res.
+inst->gref (tc-instance Res _ _) Res.
 
 % returns all the instances of the passed ClassName
 pred get-inst-by-tc-name i:gref, o:list gref.
@@ -93,13 +93,9 @@ make-tc _IsHead Ty Inst Hyp Clause :-
 % returns the priority of an instance from the gref of an instance
 pred get-inst-prio i:gref, o:int.
 get-inst-prio InstGr Prio :-
-  coq.env.typeof InstGr InstTy,
-  get-TC-of-inst-type InstTy TC,
-  find-opt {coq.TC.db-for TC} 
-    (x\ tc-instance InstGr (tc-priority-given Prio) = x ;
-        tc-instance InstGr (tc-priority-computed Prio) = x)
-      (some _), !.
-get-inst-prio _ 0.
+  coq.TC.get-instance InstGr (tc-instance _ _ (tc-priority-given Prio)).
+get-inst-prio InstGr Prio :-
+  coq.TC.get-instance InstGr (tc-instance _ _ (tc-priority-computed Prio)).
 
 % TODO: @FissoreD improve this method complexity
 pred get-full-path i:gref, o:string.

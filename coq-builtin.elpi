@@ -1132,7 +1132,7 @@ type tc-priority-computed int -> tc-priority. % Coq computed priority
 
 % Type class instance with priority
 kind tc-instance type.
-type tc-instance gref -> tc-priority -> tc-instance.
+type tc-instance gref -> gref -> tc-priority -> tc-instance.
 
 % [coq.TC.declare-instance GR Priority] Declare GR as a Global type class
 % instance with Priority.
@@ -1149,6 +1149,10 @@ external pred coq.TC.db-tc o:list gref.
 % [coq.TC.db-for GR InstanceList] reads all instances of the given class GR.
 % Instances are in their precedence order.
 external pred coq.TC.db-for i:gref, o:list tc-instance.
+
+% [coq.TC.get-instance GR InstanceList] reads all instances of the given
+% class GR. Instances are in their precedence order.
+external pred coq.TC.get-instance i:gref, o:tc-instance.
 
 % [coq.TC.class? GR] checks if GR is a class
 external pred coq.TC.class? i:gref.

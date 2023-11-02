@@ -3,7 +3,7 @@
 pred correct_instance_order_aux i:gref, i:(list tc-instance), i:(list gref).
 :name "tc-correct-instance-order-aux"
 correct_instance_order_aux _ [] [].
-correct_instance_order_aux TC [tc-instance I1 _ | TL1] [I1 | TL2] :-
+correct_instance_order_aux TC [tc-instance I1 _ _ | TL1] [I1 | TL2] :-
   correct_instance_order_aux TC TL1 TL2. 
 
 % [Typeclasses of Coq, Elpi Instances]

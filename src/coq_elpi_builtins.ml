@@ -461,6 +461,7 @@ let tc_priority = let open Conv in let open API.AlgebraicData in declare {
 type type_class_instance = {
   implementation : GlobRef.t;
   priority : tc_priority;
+  is_class : GlobRef.t
 }
 
 let tc_instance = let open Conv in let open API.AlgebraicData in declare {
@@ -468,9 +469,9 @@ let tc_instance = let open Conv in let open API.AlgebraicData in declare {
   doc = "Type class instance with priority";
   pp = (fun fmt _ -> Format.fprintf fmt "<todo>");
   constructors = [
-    K("tc-instance","",A(gref,A(tc_priority,N)),
-      B (fun implementation priority -> { implementation; priority }),
-      M (fun ~ok ~ko { implementation; priority } -> ok implementation priority));
+    K("tc-instance","",A(gref,A(gref, A(tc_priority,N))),
+      B (fun implementation is_class priority -> { implementation; is_class; priority }),
+      M (fun ~ok ~ko { implementation; priority; is_class } -> ok implementation is_class priority));
 ]} |> CConv.(!<)
 
 let get_instance_prio gr env sigma (info : 'a Typeclasses.hint_info_gen) : tc_priority =
@@ -521,14 +522,11 @@ let get_instances (env: Environ.env) (emap: Evd.evar_map) tc : type_class_instan
     | Constr.Const (a, _) -> Some (Names.GlobRef.ConstRef a)
     | Constr.Construct (a, _) -> Some (Names.GlobRef.ConstructRef a)
     | _ -> None) constrs in 
-  let inst_of_tc =
-    Typeclasses.instances_exn env emap tc |>
-    List.fold_left (fun m i -> GlobRef.Map.add i.Typeclasses.is_impl i m) GlobRef.Map.empty in
-  let instances_grefs2istance x = 
+  let instances_grefs2istance (inst_gref : GlobRef.t) = 
     let open Typeclasses in 
-    let inst = GlobRef.Map.find x inst_of_tc in
-    let priority = get_instance_prio x env sigma inst.is_info in 
-    { implementation = x; priority } in 
+    let inst : instance = get_instance_from_gref inst_gref in
+    let priority = get_instance_prio inst_gref env sigma inst.is_info in 
+    { implementation = inst_gref; priority; is_class = inst.is_class } in 
   List.map instances_grefs2istance instances_grefs
 
 type scope = ExecutionSite | CurrentModule | Library
@@ -2805,6 +2803,18 @@ Supported attributes:
     Out(list tc_instance,  "InstanceList",
     Read (global, "reads all instances of the given class GR. Instances are in their precedence order."))),
   (fun gr _ ~depth { env } _ state -> !: (get_instances env (get_sigma state) gr))),
+  DocAbove);
+
+  MLCode(Pred("coq.TC.get-instance", 
+    In(gref, "GR",
+    Out(tc_instance,  "Instance",
+    Read (global, "reads all instances of the given class GR. Instances are in their precedence order."))),
+  (fun gr _ ~depth { env } _ state -> 
+    let i = (Typeclasses.get_instance_from_gref gr) in 
+    let priority : tc_priority = get_instance_prio i.is_impl env (get_sigma state) i.is_info in
+    let b : type_class_instance = {priority; implementation = i.is_impl; is_class = i.is_class} in 
+    !: b
+    )),
   DocAbove);
 
   MLCode(Pred("coq.TC.class?",

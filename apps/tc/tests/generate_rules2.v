@@ -32,10 +32,10 @@ Elpi Accumulate TC.Solver lp:{{
   pred main1 o:term.
   main1 Clause :-
     run 3 [
-      clause ({{cl O}}) [],
-      all (x\ clause {{cl (S lp:x)}} [{{cl lp:x}}])
-    ] [{{cl lp:X}}] Goals,
-    Clause = (app[{{cl lp:X}} | Goals ]).
+      clause ({{cl nat inst1}}) [],
+      all (A\ (all S\ clause {{cl (prod lp:A lp:A) (inst2 lp:A lp:S)}} [{{cl lp:A lp:S}}]))
+    ] [{{cl lp:X lp:Y}}] Goals,
+    Clause = (app[{{cl lp:X lp:Y}} | Goals ]).
 }}.
 Elpi Typecheck TC.Solver.
 

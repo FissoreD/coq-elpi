@@ -2,18 +2,17 @@ From elpi Require Import tc.
 
 Set TC NameShortPath.
 Elpi Override TC TC.Solver All.
-Elpi Command compiler.
 
 Section T.
   Class cl (T : Type).
 
   Elpi TC Deactivate Observer TC.Compiler.
   Instance inst1 : cl nat. Qed.
-  Instance inst2 (A : Type) : cl A -> cl (A * A). Qed.
+  Instance inst2 (A : Type) : cl A -> cl (list A). Qed.
 
   Elpi Accumulate TC.Solver lp:{{
-    precompilation.instances (pi a s\ tc-cl {{prod lp:a lp:a}} {{inst2 lp:a lp:s}} :- [tc-cl a s]).
     precompilation.instances (tc-cl {{nat}} {{inst1}} :- []).
+    precompilation.instances (pi a s\ tc-cl {{list lp:a}} {{inst2 lp:a lp:s}} :- [tc-cl a s]).
     % precompilation.instances (tc-cl {{bool}} {{inst1}} :- []).
 
     pred findall-one-arg i:(B -> A), o:list A.
@@ -35,28 +34,34 @@ Section T.
     normalize X (X :- []).
 
     pred get-head i:prop, o:prop.
-    get-head (A :- _) A.
+    get-head A B :- normalize A (B :- _).
 
-    pred get-hyps i:prop, o:list prop.
-    get-hyps (_ :- Hyps) Hyps.
-
-    % [same-head P HD] P is a clause and HD is a HD without pi
     pred same-head i:prop, i:prop.
-    same-head A B :- normalize A A1, normalize B B1, get-head A1 A2, get-head B1 B2, A2 = B2.
+    same-head A B :- get-head A A2, get-head B B2, A2 = B2.
+
+    pred map-filter i:list A, i:(A -> B -> prop), o:list B.
+    map-filter [] _ [] :- !.
+    map-filter [X|XS] F [Y|YS] :- F X Y, map-filter XS F YS.
+    map-filter [_|XS] F YS :- map-filter XS F YS.
 
     pred run i:int, i:prop, i:list prop, o:list prop.
     run Depth Goal Program ProgramFilter1 :-
       std.filter Program (same-head Goal) ProgramFilter,
-      std.map ProgramFilter normalize Normalized,
-      std.map-filter Normalized (x\r\
-        sigma Head Hyps\
+      std.map ProgramFilter normalize Normalized, !,
+      % coq.say "The initial goal is" Goal,
+      map-filter Normalized (x\r\
+        % coq.say "--------------------------------------------",
+        sigma Head Hyps Hyps'\
         (Head :- Hyps) = x,
         compile-rule Depth Program Hyps Hyps',
-        r = (Head :- Hyps')) ProgramFilter1.
+        r = (Head :- Hyps')
+        % coq.say "Found the result",
+        % coq.say r
+        ) ProgramFilter1.
 
     pred compile-rule i:int, i:list prop, i:list prop, o:list prop.
-    compile-rule 0 _ R R.
-    compile-rule _ _ [] [].
+    compile-rule 0 _ R R :- !.
+    compile-rule _ _ [] [] :- !.
 
     compile-rule Depth Program [Hyp|Hyps] Res :-
       Depth > 0, Depth1 is Depth - 1,
@@ -68,25 +73,24 @@ Section T.
     compile-rule.aux Depth [C|_] Program Hyp GL :-
       normalize C C1, same-head Hyp C1, C1 = (_ :- Hyps'),
       compile-rule Depth Program Hyps' GL.
-
-    % pred compile-hyps i:int, i:list prop, i:list prop, i:list prop, o:list prop.
-    % compile-hyps 0 Hyps _ _ Hyps.
-    % compile-hyps Depth Hyps Program [Hd|_] Res :-
-
-    %   std.map Hyps (compile-rule Depth1 Program) Hyps'.
+    compile-rule.aux Depth [_|TL] Program Hyp GL :-
+      compile-rule.aux Depth TL Program Hyp GL.
 
     pred mainn o:list prop.
     mainn R :- !,
-        findall-one-arg precompilation.instances L,
-        run 0 (pi X Y\ tc-cl X Y) L R.
+      A = (pi X Y\ tc-cl X Y),
+      findall-one-arg precompilation.instances L, !,
+      run 1 A L R.
   }}.
   Elpi Typecheck TC.Solver.
 
   Elpi Query TC.Solver lp:{{
-    sigma L L1 L2\
-      std.findall (mainn L) L1,
-      coq.say L1
-      % std.forall L (x\ coq.say x "\n\n")
+    sigma L L1 L2 L3 R'\
+      std.findall (mainn _) L,
+      std.map L (x\r\ x = mainn r) L1,
+      std.flatten L1 L2,
+      % std.map L2 (x\y\ abs-evars x y _) R',
+      coq.say "\n\nResult:\n" L2
     .
   }}.
 
@@ -145,3 +149,4 @@ Section T.
   Elpi Print TC.Solver.
 
   Goal C nat. apply _. Qed.
+

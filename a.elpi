@@ -14,31 +14,42 @@ namespace generalize_evar {
   copy (app L) (app L1) :- std.map L copy L1.
   copy (atom A) (atom A).
 
+  pred copy-clause i:clause, o:clause.
+  copy-clause (clause A B) (clause A' B') :- copy A A', std.map B copy B'.
+  copy-clause (lambda A) (lambda A') :-
+    pi x\ copy-clause (A x) (A' x).
+
   pred fold-map i:term, i:A, o:term, o:A.
   fold-map (app L) A (app L1) A1 :- std.fold-map L A fold-map L1 A1.
   fold-map (atom X) A (atom X) A.
 
+  pred fold-map-clause i:clause, i:A, o:clause, o:A.
+  fold-map-clause (clause A B) C (clause A' B') C' :-
+    std.fold-map [A | B] C fold-map [A' | B'] C'.
+  fold-map-clause (lambda A) C (lambda A') C' :-
+    pi x\ fold-map-clause (A x) C (A' x) C'.
+
 
   % bind back abstracted subterms
-  pred bind i:int, i:int, i:term, o:clause.
+  pred bind i:int, i:int, i:clause, o:clause.
   bind I M T T1 :- M > I, !,
     T1 = lambda B,
     N is I + 1,
     pi x\                           % we allocate the fresh symbol for (abs M)
       (copy (abs N) x :- !) =>      % we schedule the replacement (abs M) -> x
       bind N M T (B x).
-  bind M M T T1 :- copy T T1', T1 = clause T1' [].         % we perform all the replacements
+  bind M M T T1 :- copy-clause T T1', T1 = T1'.         % we perform all the replacements
 
   % for a term with M holes, returns a term with M variables to fill these holes
   % the clause see is only generated for a term if it hasn't been seen before
   % the term might need to be typechecked first or main generates extra holes for the
   % type of the parameters
-  pred abs-evars i:term, o:clause, o:int.
+  pred abs-evars i:clause, o:clause, o:int.
   abs-evars T1 T3 M :- std.do! [
     % we put (abs N) in place of each occurrence of the same hole
     (pi T Ty N N' M \ fold-map T N (abs M) M :- var T, not (seen? T _), !, M is N + 1, seen! T M) =>
     (pi T N M \ fold-map T N (abs M) N :- var T, seen? T M, !) =>
-      fold-map T1 0 T2 M,
+      fold-map-clause T1 0 T2 M,
     % we abstract M holes (M abs nodes)
     bind 0 M T2 T3,
     % cleanup constraint store
@@ -85,11 +96,10 @@ pred destruct-clause i:clause, o:term, o:list term.
 destruct-clause (clause A B) A B.
 destruct-clause (lambda A) B C :- sigma x\ destruct-clause (A x) B C.
 
-pred entry-point i:int, i:list clause i:list clause, i:term, o:term.
-entry-point Depth [HD|_] P T R :-
+pred entry-point i:int, i:list clause i:list clause, i:term, o:clause.
+entry-point Depth [HD|_] P T (clause T New-Hyps) :-
   destruct-clause HD Hd Tl, Hd = T,
-  precompile-list Depth P Tl New-Hyps,
-  R = app [T | New-Hyps].
+  precompile-list Depth P Tl New-Hyps.
 entry-point Depth [_|TL] P T R :-
   entry-point Depth TL P T R.
 

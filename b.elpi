@@ -1,0 +1,30 @@
+kind tm type.
+type app list tm -> tm.
+type atom string -> tm.
+
+kind clause type.
+type clause tm -> list tm -> clause.
+type all (tm -> clause) -> clause.
+
+pred run i:int, i:list clause, i:list tm, o:list tm.
+run _ _ [] [] :- !.
+run 0 P GL GL :- !.
+run N P [G|GS] GL :- N > 0, M is N - 1, run.aux M P P G GL1, run M P GS GL2, std.append GL1 GL2 GL.
+run.aux N [C|_] P G GL :- print "try=" C, backchain N C P G GL.
+run.aux N [_|CL] P G GL :- run.aux N CL P G GL.
+
+pred backchain i:int, i:clause,i:list clause, o:tm, o:list tm.
+backchain N (all C) P G GL :- backchain N (C FRESH_) P G GL.
+backchain N (clause HD HYPS) P G GL :-
+  G = HD,
+  print "success, subgoals=" HYPS,
+  run N P HYPS GL.
+
+main1 Clause :-
+  run 3 [
+    clause (app[atom "P",atom "0"]) [],
+    all (x\ clause (app[atom "P",(app [atom "S", x])]) [(app[atom "P",x])])
+  ] [app [atom "P",X]] Goals,
+  Clause = (app[atom ":-", app [atom "P",X] | Goals ]).
+
+main :- (main1 C), print C.

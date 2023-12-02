@@ -7,9 +7,9 @@ count [] _ 0.
 count [A | TL] A R :- count TL A X, R is (X + 1).
 count [_ | TL] A R :- count TL A R.
 
-pred expected-found i:A, i:A. 
-expected-found Expected Found :- 
-  Expected = Found; 
+pred expected-found i:A, i:A.
+expected-found Expected Found :-
+  Expected = Found;
   halt "Assertion error"
   "\nExpected :" Expected
   "\nFound    :" Found.
@@ -40,7 +40,7 @@ args->str-list L Res :-
   std.map L (x\r\ str r = x) Res.
 
 pred or i:bool, i:bool, o:bool.
-or ff ff ff :- !. 
+or ff ff ff :- !.
 or _ _ tt.
 
 pred neg i:bool, o:bool.
@@ -58,5 +58,10 @@ pred do i:list prop.
 do [].
 do [P|PS] :- P, do PS.
 
-pred do-once i:prop. 
+pred do-once i:prop.
 do-once A :- A, !.
+
+pred findall-arity-one i:(A -> prop), o:list A.
+findall-arity-one P A :-
+  std.findall (P _) L,
+  std.map L (x\y\ x = P y) A.

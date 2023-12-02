@@ -16,20 +16,20 @@ Elpi Accumulate Db tc.db.
 Elpi Accumulate lp:{{
   pred list-printer i:gref, i:list prop.
   list-printer _ [].
-  list-printer ClassGR Instances :- 
+  list-printer ClassGR Instances :-
     std.map Instances (x\r\ x = instance _ r _) InstancesGR,
     coq.say "Instances list for" ClassGR "is:",
-    std.forall InstancesGR (x\ coq.say " " x). 
+    std.forall InstancesGR (x\ coq.say " " x).
 
   main [str Class] :-
     std.assert! (coq.locate Class ClassGR) "The entered TC not exists",
     std.findall (instance _ _ ClassGR) Rules,
-    list-printer ClassGR Rules. 
+    list-printer ClassGR Rules.
   main [] :-
     std.forall {coq.TC.db-tc} (ClassGR\ sigma Rules\
       std.findall (instance _ _ ClassGR) Rules,
       list-printer ClassGR Rules
-    ).  
+    ).
 }}.
 Elpi Typecheck.
 
@@ -40,16 +40,16 @@ Elpi Accumulate File compiler.
 Elpi Accumulate File create_tc_predicate.
 Elpi Accumulate File solver.
 Elpi Query lp:{{
-  sigma Options\ 
+  sigma Options\
     all-options Options,
-    std.forall Options (x\ sigma L\ x L, 
+    std.forall Options (x\ sigma L\ x L,
       coq.option.add L (coq.option.bool ff) ff).
 }}.
 Elpi Typecheck.
 
 Elpi Query lp:{{
-  sigma Nums\ 
-    std.iota 1001 Nums, 
+  sigma Nums\
+    std.iota 1001 Nums,
     std.forall Nums (x\ sigma NumStr\
       NumStr is int_to_string x,
       @global! => add-tc-db NumStr (before "lastHook") (hook NumStr)
@@ -84,8 +84,8 @@ Elpi Accumulate Db tc.db.
 Elpi Accumulate Db tc_options.db.
 Elpi Accumulate File tc_aux.
 Elpi Accumulate lp:{{
-  main [str ClassStr] :- 
-    coq.locate ClassStr ClassGR, 
+  main [str ClassStr] :-
+    coq.locate ClassStr ClassGR,
     std.assert! (coq.TC.class? ClassGR) "Should pass the name of a type class",
     std.assert! (class ClassGR PredName _) "Cannot find `class ClassGR _ _` in the db",
     std.assert! (not (instance _ _ ClassGR)) "Cannot set deterministic a class with more than one instance",
@@ -96,15 +96,48 @@ Elpi Typecheck.
 Elpi Command TC.Get_class_info.
 Elpi Accumulate Db tc.db.
 Elpi Accumulate lp:{{
-  main [str ClassStr] :- 
-    coq.locate ClassStr ClassGR, 
+  main [str ClassStr] :-
+    coq.locate ClassStr ClassGR,
     class ClassGR PredName SearchMode,
     coq.say "The predicate of" ClassGR "is" PredName "and search mode is" SearchMode.
   main [str C] :- coq.error C "is not found in elpi db".
-  main [A] :- std.assert! (str _ = A) true "first argument should be a str".
-  main [_|_] :- coq.error "get_class_info accepts only one argument of type str". 
-  main L :- coq.error "Uncaught error on input" L. 
+  main [A] :- std.assert! (str _ = A) "first argument should be a str".
+  main [_|_] :- coq.error "get_class_info accepts only one argument of type str".
+  main L :- coq.error "Uncaught error on input" L.
 }}.
+Elpi Typecheck.
+
+
+From elpi.apps.tc Extra Dependency "instance_precompilation.elpi" as instance_precompilation.
+Elpi Register TC Compiler TC.Compiler.
+
+Class cl (i : nat).
+Instance zero : cl 0. Qed.
+Instance n (N : nat) : cl N -> cl (S N). Qed.
+
+Elpi Command ttt1.
+Elpi Accumulate Db tc.db.
+Elpi Accumulate Db tc_options.db.
+Elpi Accumulate File instance_precompilation.
+Elpi Typecheck.
+Elpi Accumulate  lp:{{
+  shorten precompilation.{instances, instance-clause, instance-lambda}.
+  precompilation.instances (instance-clause {{cl 0 zero}} []).
+  precompilation.instances (instance-clause {{cl (S lp:N) (n lp:S)}} [{{cl lp:N lp:S}}]).
+}}.
+Elpi Typecheck.
+Elpi Query  lp:{{
+  sigma R X Y K M \
+  findall-arity-one precompilation.instances R,
+  std.findall (entry-point 1 R R {{cl lp:X lp:Y}} _) K,
+  std.map K (x\y\ x = entry-point _ _ _ _ y) M,
+  std.map M (x\y\ generalize_evar.abs-evars x y _) Q.
+
+  true.
+}}.
+Elpi Typecheck.
+
+
 Elpi Override TC TC.Solver All.
 
 Elpi Register TC Compiler TC.Compiler.

@@ -107,10 +107,7 @@ Elpi Accumulate lp:{{
 }}.
 Elpi Typecheck.
 
-
-From elpi.apps.tc Extra Dependency "instance_precompilation.elpi" as instance_precompilation.
 Elpi Register TC Compiler TC.Compiler.
-
 Class cl (i : nat).
 Instance zero : cl 0. Qed.
 Instance n (N : nat) : cl N -> cl (S N). Qed.
@@ -118,25 +115,29 @@ Instance n (N : nat) : cl N -> cl (S N). Qed.
 Elpi Command ttt1.
 Elpi Accumulate Db tc.db.
 Elpi Accumulate Db tc_options.db.
+From elpi.apps.tc Extra Dependency "instance_precompilation.elpi" as instance_precompilation.
+
 Elpi Accumulate File instance_precompilation.
 Elpi Typecheck.
 Elpi Accumulate  lp:{{
   shorten precompilation.{instances, instance-clause, instance-lambda}.
   precompilation.instances (instance-clause {{cl 0 zero}} []).
-  precompilation.instances (instance-clause {{cl (S lp:N) (n lp:S)}} [{{cl lp:N lp:S}}]).
+  precompilation.instances (instance-lambda (N\ (instance-lambda S\ instance-clause {{cl (S lp:N) (n lp:S)}} [{{cl lp:N lp:S}}]))).
 }}.
 Elpi Typecheck.
+
 Elpi Query  lp:{{
-  sigma R X Y K M \
-  findall-arity-one precompilation.instances R,
-  std.findall (entry-point 1 R R {{cl lp:X lp:Y}} _) K,
-  std.map K (x\y\ x = entry-point _ _ _ _ y) M,
-  std.map M (x\y\ generalize_evar.abs-evars x y _) Q.
+  coq.env.typeof {{:gref cl}} C.
+}}.
 
-  true.
+Elpi Query  lp:{{
+  sigma R X Y K M A B L Q\
+  precompile-class 2 {{:gref cl}} R,
+  coq.say R.
 }}.
 Elpi Typecheck.
 
+xx.
 
 Elpi Override TC TC.Solver All.
 

@@ -1,0 +1,97 @@
+
+
+kind tm type.
+type app list tm -> tm.
+type atom string -> tm.
+
+kind clause type.
+type clause tm -> list tm -> clause.
+type all (tm -> clause) -> clause.
+
+
+
+pred run i:int, i:list clause, i:list tm, o:list tm.
+run _ _ [] [].
+run 0 P GL GL.
+run N P [G|GS] GL :- N > 0, M is N - 1, run.aux M P P G GL1, run M P GS GL2, std.append GL1 GL2 GL.
+run.aux N [C|_] P G GL :- print "try=" C, backchain N C P G GL.
+run.aux N [_|CL] P G GL :- run.aux N CL P G GL.
+
+pred backchain i:int, i:clause,i:list clause, o:tm, o:list tm.
+backchain N (all C) P G GL :- backchain N (C FRESH_) P G GL.
+backchain N (clause HD HYPS) P G GL :-
+  G = HD,
+  print "success, subgoals=" HYPS,
+  run N P HYPS GL.
+
+main1 Clause :-
+  run 3 [
+    all (x\ clause (app[atom "P",(app [atom "S", x])]) [(app[atom "P",x])]),
+    clause (app[atom "P",atom "0"]) [],
+  ] [app [atom "P",X]] Goals,
+  Clause = (app[atom ":-", app [atom "P",X] | Goals ]).
+
+main :- std.findall (main1 C) L, print L.
+
+pred copy i:tm, o:tm.
+copy (app L) (app L1) :- std.map L copy L1.
+copy (atom A) (atom A).
+
+pred fold-map i:tm, i:A, o:tm, o:A.
+fold-map (app L) A (app L1) A1 :- std.fold-map L A fold-map L1 A1.
+fold-map (atom X) A (atom X) A.
+
+% we add a new constructor to terms to represent terms to be abstracted
+type abs int -> tm.
+
+% bind back abstracted subterms
+pred bind i:int, i:int, i:tm, o:clause.
+bind I M T T1 :- M > I, !,
+  T1 = all B,
+  N is I + 1,
+  pi x\                           % we allocate the fresh symbol for (abs M)
+    (copy (abs N) x :- !) =>      % we schedule the replacement (abs M) -> x
+    bind N M T (B x).
+bind M M T T1 :- copy T T1', T1 = clause T1' [].         % we perform all the replacements
+
+% for a term with M holes, returns a term with M variables to fill these holes
+% the clause see is only generated for a term if it hasn't been seen before
+% the term might need to be typechecked first or main generates extra holes for the
+% type of the parameters
+pred abs-evars i:tm, o:clause, o:int.
+abs-evars T1 T3 M :- std.do! [
+  % we put (abs N) in place of each occurrence of the same hole
+  (pi T Ty N N' M \ fold-map T N (abs M) M :- var T, not (seen? T _), !, M is N + 1, seen! T M) =>
+  (pi T N M \ fold-map T N (abs M) N :- var T, seen? T M, !) =>
+    fold-map T1 0 T2 M,
+  % we abstract M holes (M abs nodes)
+  bind 0 M T2 T3,
+  % cleanup constraint store
+  purge-seen!,
+].
+
+% all constraints are also on _ so that they share
+% a variable with the constraint to purge the store
+
+% we query if the hole was seen before, and if so
+% we fetch its number
+pred seen? i:tm, o:int.
+seen? X Y :- declare_constraint (seen? X Y) [X,_].
+
+% we declare it is now seen and label it with a number
+pred seen! i:tm, i:int.
+seen! X Y :- declare_constraint (seen! X Y) [X,_].
+
+% to empty the store
+pred purge-seen!.
+purge-seen! :- declare_constraint purge-seen! [_].
+
+constraint seen? seen! purge-seen!  {
+  % a succesful query, give the label back via M
+  rule (seen! X N) \ (seen? X M) <=> (M = N).
+  % an unsuccesful query
+  rule             \ (seen? X _) <=> false.
+
+  rule purge-seen! \ (seen! _ _).
+  rule \ purge-seen!.
+}

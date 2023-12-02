@@ -1,7 +1,7 @@
 accumulate base.
 accumulate tc_aux.
 
-shorten precompilation.{instance-clause, instance-lambda}.
+shorten precompilation.{instance-clause, instance-lambda, instances}.
 
 namespace generalize_evar {
     % we add a new constructor to terms to represent terms to be abstracted
@@ -72,59 +72,55 @@ namespace generalize_evar {
   }
 }
 
-pred findall-arity-one i:(A -> prop), o:list A.
-findall-arity-one P R :-
-  std.findall (P _) L,
-  std.map L (x\r\ x = P r) R.
+pred precompile-class i:int, i:gref, o:list prop.
+precompile-class Depth ClassGR Clauses :-
+  precompile-class.aux Depth ClassGR [] {coq.env.typeof ClassGR} Clauses.
 
-pred destruct-instance-clause i:instance-clause, o:term, o:list term.
-destruct-instance-clause (instance-clause A B) A B.
-destruct-instance-clause (instance-lambda A) B C :- sigma x\ destruct-instance-clause (A x) B C.
+pred precompile-class.aux i:int, i:gref, i:list term, i:term, o:list prop.
+precompile-class.aux Depth ClassGR L (prod _ _ X) Clauses :- !,
+  precompile-class.aux Depth ClassGR [V_ | L] (X V_) Clauses.
+precompile-class.aux Depth ClassGR Vars _ Clauses :-
+  coq.mk-app (global ClassGR) [V_ | Vars] App,
+  precompile-term Depth App Clauses.
 
-pred entry-point i:int, i:list instance-clause i:list instance-clause, i:term, o:instance-clause.
-entry-point Depth [HD|_] P T (instance-clause T New-Hyps) :-
-  destruct-instance-clause HD Hd Tl, Hd = T,
-  precompile-list Depth P Tl New-Hyps.
-entry-point Depth [_|TL] P T R :-
-  entry-point Depth TL P T R.
+pred precompile-term i:int, i:term, o:list prop.
+precompile-term Depth T Clauses :-
+  findall-arity-one instances P,
+  std.findall (precompile-hyp-list Depth P [T] _) L,
+  std.map L (x\r\ sigma Head Hyps Generalized Cl\
+    x = precompile-hyp-list _ _ [Head] Hyps,
+    generalize_evar.abs-evars (instance-clause Head Hyps) Generalized _,
+    instance-clause->prop Generalized r) Clauses.
 
-
-% [precompile-list Depth Program Hyps R]
+% [precompile-hyp-list Depth Program Hyps R]
 % - Depth is the depth of search
 % - Program is the list of instance-clauses of the program
 % - Hyps is the list of premisis of a instance-clause
 % - R is the list of new premisis
-pred precompile-list i:int, i:list instance-clause, i:list term, o:list term.
-precompile-list _ _ [] [] :- !.
-precompile-list 0 _ P P :- !.
-precompile-list Depth P [H0 | Hyps] R :-
+pred precompile-hyp-list i:int, i:list instance-clause, i:list term, o:list term.
+precompile-hyp-list _ _ [] [] :- !.
+precompile-hyp-list 0 _ P P :- !.
+precompile-hyp-list Depth P [G | GS] R :-
   Depth > 0,
   Depth1 is Depth - 1,
-  solve-hyp-loop Depth1 P P H0 HD,
-  precompile-list Depth1 P Hyps TL,
+  precompile-hyp-loop Depth1 P P G HD,
+  precompile-hyp-list Depth1 P GS TL,
   std.append HD TL R.
 
-% [solve-hyp-loop Depth Program ProgramMem Hyp Res]
+% [precompile-hyp-loop Depth Program ProgramMem Hyp Res]
 % Solve the current Hyp by looping to the current program, ProgramMem
 % is the entire program and is used to do the recursive calls
-pred solve-hyp-loop i:int, i:list instance-clause, i:list instance-clause, i:term, o:list term.
-% TODO: following rules should be applied only if no other solution is possible
-solve-hyp-loop _ [] _ HD [HD] :- !.
-solve-hyp-loop Depth [HD|_] P Hyp R :- solve-hyp Depth P HD Hyp R.
-solve-hyp-loop Depth [_|TL] P Hyp R :- solve-hyp-loop Depth TL P Hyp R.
+pred precompile-hyp-loop i:int, i:list instance-clause, i:list instance-clause, i:term, o:list term.
+precompile-hyp-loop Depth [HD|_] P Hyp R :- precompile-hyp Depth P HD Hyp R.
+precompile-hyp-loop Depth [_|TL] P Hyp R :- precompile-hyp-loop Depth TL P Hyp R.
 
-% [solve-hyp Depth Program Currentinstance-clause CurrentHyp Res]
+% [precompile-hyp Depth Program Currentinstance-clause CurrentHyp Res]
 % Tries to solve CurrentHyp with the Currentinstance-clause and gives
 % back Res, that is the list of remaining hypothesis
-pred solve-hyp i:int, i:list instance-clause, i:instance-clause, i:term, o:list term.
-solve-hyp Depth P (instance-clause Head Hyps) Hd Res :- !,
-  % print "the head is" Head "and the hyps is" Hyps "with head" Hd,
-  Head = Hd,
-  % print "------------------------------------ the head match ------------------------------------",
-  precompile-list Depth P Hyps Res.
-  % print "Should be at least one time".
-solve-hyp Depth P (instance-lambda F) Hd Res :-
-  solve-hyp Depth P (F D_) Hd Res.
+pred precompile-hyp i:int, i:list instance-clause, i:instance-clause, i:term, o:list term.
+precompile-hyp Depth P (instance-lambda F) Hd Res :- precompile-hyp Depth P (F D_) Hd Res.
+precompile-hyp Depth P (instance-clause Head Hyps) Hd Res :- !,
+  Head = Hd, precompile-hyp-list Depth P Hyps Res.
 
 pred term->prop i:term, o:prop.
 term->prop T P :-
@@ -134,32 +130,10 @@ term->prop T P :-
 
 pred instance-clause->prop i:instance-clause, o:prop.
 instance-clause->prop (instance-clause Head PremiseTerms) Clause :-
-  coq.safe-dest-app Head (global ClassGR) ArgTerms,
-  gref->pred-name ClassGR ClassName,
-  std.map ArgTerms term->prop Args,
+  term->prop Head Q,
   std.map PremiseTerms term->prop Premises,
-  coq.elpi.predicate ClassName Args Q,
   if2 (Premises = []) (Clause = Q)
       (Premises = [Hd]) (Clause = (Q :- Hd))
       (Clause = (Q :- Premises)).
-
-type tp term -> prop.
-
-pred prod->fresh-vars i:term, o:prop.
-prod->fresh-vars (prod _ _ A) (pi x\ F x) :- !,
-  pi x\ prod->fresh-vars (A x) (F x).
-prod->fresh-vars A (pi x\ B x) :- pi x\ coq.mk-app A x (L x), (B x) = tp (L x).
-
-pred class_term_head i:gref, o:prop.
-class_term_head GR T :-
-  coq.env.typeof GR T', prod->fresh-vars T' T.
-
-/*
-  [precompile ClassGR Depth Rules] takes the gref of a class and a depth.
-  After looking in the `precompilation.instances` database, we filter all the
-  rules for ClassGR and precompile them with the given depth.
-  TODO: maybe precompilation is done on a paricular argument to avoid exponential
-        database
-*/
-pred precompile_class i:gref, i:int, o:list prop.
-% precompile_class ClassGR Depth Rules :-
+instance-clause->prop (instance-lambda H) (pi x\ Clause x) :-
+  pi x\ instance-clause->prop (H x) (Clause x).

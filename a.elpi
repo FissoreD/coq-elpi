@@ -2,9 +2,9 @@ kind term type.
 type app list term -> term.
 type atom string -> term.
 
-kind clause type.
-type clause term -> list term -> clause.
-type lambda (term -> clause) -> clause.
+kind instance-clause type.
+type instance-clause term -> list term -> instance-clause.
+type instance-lambda (term -> instance-clause) -> instance-clause.
 
 namespace generalize_evar {
     % we add a new constructor to terms to represent terms to be abstracted
@@ -14,42 +14,42 @@ namespace generalize_evar {
   copy (app L) (app L1) :- std.map L copy L1.
   copy (atom A) (atom A).
 
-  pred copy-clause i:clause, o:clause.
-  copy-clause (clause A B) (clause A' B') :- copy A A', std.map B copy B'.
-  copy-clause (lambda A) (lambda A') :-
-    pi x\ copy-clause (A x) (A' x).
+  pred copy-instance-clause i:instance-clause, o:instance-clause.
+  copy-instance-clause (instance-clause A B) (instance-clause A' B') :- copy A A', std.map B copy B'.
+  copy-instance-clause (instance-lambda A) (instance-lambda A') :-
+    pi x\ copy-instance-clause (A x) (A' x).
 
   pred fold-map i:term, i:A, o:term, o:A.
   fold-map (app L) A (app L1) A1 :- std.fold-map L A fold-map L1 A1.
   fold-map (atom X) A (atom X) A.
 
-  pred fold-map-clause i:clause, i:A, o:clause, o:A.
-  fold-map-clause (clause A B) C (clause A' B') C' :-
+  pred fold-map-instance-clause i:instance-clause, i:A, o:instance-clause, o:A.
+  fold-map-instance-clause (instance-clause A B) C (instance-clause A' B') C' :-
     std.fold-map [A | B] C fold-map [A' | B'] C'.
-  fold-map-clause (lambda A) C (lambda A') C' :-
-    pi x\ fold-map-clause (A x) C (A' x) C'.
+  fold-map-instance-clause (instance-lambda A) C (instance-lambda A') C' :-
+    pi x\ fold-map-instance-clause (A x) C (A' x) C'.
 
 
   % bind back abstracted subterms
-  pred bind i:int, i:int, i:clause, o:clause.
+  pred bind i:int, i:int, i:instance-clause, o:instance-clause.
   bind I M T T1 :- M > I, !,
-    T1 = lambda B,
+    T1 = instance-lambda B,
     N is I + 1,
     pi x\                           % we allocate the fresh symbol for (abs M)
       (copy (abs N) x :- !) =>      % we schedule the replacement (abs M) -> x
       bind N M T (B x).
-  bind M M T T1 :- copy-clause T T1', T1 = T1'.         % we perform all the replacements
+  bind M M T T1 :- copy-instance-clause T T1', T1 = T1'.         % we perform all the replacements
 
   % for a term with M holes, returns a term with M variables to fill these holes
-  % the clause see is only generated for a term if it hasn't been seen before
+  % the instance-clause see is only generated for a term if it hasn't been seen before
   % the term might need to be typechecked first or main generates extra holes for the
   % type of the parameters
-  pred abs-evars i:clause, o:clause, o:int.
+  pred abs-evars i:instance-clause, o:instance-clause, o:int.
   abs-evars T1 T3 M :- std.do! [
     % we put (abs N) in place of each occurrence of the same hole
     (pi T Ty N N' M \ fold-map T N (abs M) M :- var T, not (seen? T _), !, M is N + 1, seen! T M) =>
     (pi T N M \ fold-map T N (abs M) N :- var T, seen? T M, !) =>
-      fold-map-clause T1 0 T2 M,
+      fold-map-instance-clause T1 0 T2 M,
     % we abstract M holes (M abs nodes)
     bind 0 M T2 T3,
     % cleanup constraint store
@@ -83,22 +83,22 @@ namespace generalize_evar {
   }
 }
 
-pred acc o:clause.
-acc (clause (app [atom "F", atom "0"]) []).
-acc (lambda (x\ clause (app [atom "F", app [atom "S", x]]) [app [atom "F", x]])).
+pred acc o:instance-clause.
+acc (instance-clause (app [atom "F", atom "0"]) []).
+acc (instance-lambda (x\ instance-clause (app [atom "F", app [atom "S", x]]) [app [atom "F", x]])).
 
 pred findall-arity-one i:(A -> prop), o:list A.
 findall-arity-one P R :-
   std.findall (P _) L,
   std.map L (x\r\ x = P r) R.
 
-pred destruct-clause i:clause, o:term, o:list term.
-destruct-clause (clause A B) A B.
-destruct-clause (lambda A) B C :- sigma x\ destruct-clause (A x) B C.
+pred destruct-instance-clause i:instance-clause, o:term, o:list term.
+destruct-instance-clause (instance-clause A B) A B.
+destruct-instance-clause (instance-lambda A) B C :- sigma x\ destruct-instance-clause (A x) B C.
 
-pred entry-point i:int, i:list clause i:list clause, i:term, o:clause.
-entry-point Depth [HD|_] P T (clause T New-Hyps) :-
-  destruct-clause HD Hd Tl, Hd = T,
+pred entry-point i:int, i:list instance-clause, i:list instance-clause, i:term, o:instance-clause.
+entry-point Depth [HD|_] P T (instance-clause T New-Hyps) :-
+  destruct-instance-clause HD Hd Tl, Hd = T,
   precompile-list Depth P Tl New-Hyps.
 entry-point Depth [_|TL] P T R :-
   entry-point Depth TL P T R.
@@ -106,44 +106,46 @@ entry-point Depth [_|TL] P T R :-
 
 % [precompile-list Depth Program Hyps R]
 % - Depth is the depth of search
-% - Program is the list of clauses of the program
-% - Hyps is the list of premisis of a clause
+% - Program is the list of instance-clauses of the program
+% - Hyps is the list of premisis of a instance-clause
 % - R is the list of new premisis
-pred precompile-list i:int, i:list clause, i:list term, o:list term.
+pred precompile-list i:int, i:list instance-clause, i:list term, o:list term.
 precompile-list _ _ [] [] :- !.
 precompile-list 0 _ P P :- !.
-precompile-list Depth P [H0 | Hyps] R :-
+precompile-list Depth P [G | GS] R :-
   Depth > 0,
   Depth1 is Depth - 1,
-  solve-hyp-loop Depth1 P P H0 HD,
-  precompile-list Depth1 P Hyps TL,
+  solve-hyp-loop Depth1 P P G HD,
+  precompile-list Depth1 P GS TL,
   std.append HD TL R.
 
 % [solve-hyp-loop Depth Program ProgramMem Hyp Res]
 % Solve the current Hyp by looping to the current program, ProgramMem
 % is the entire program and is used to do the recursive calls
-pred solve-hyp-loop i:int, i:list clause, i:list clause, i:term, o:list term.
+pred solve-hyp-loop i:int, i:list instance-clause, i:list instance-clause, i:term, o:list term.
 % TODO: following rules should be applied only if no other solution is possible
-solve-hyp-loop _ [] _ HD [HD] :- !.
+% solve-hyp-loop _ [] _ HD [HD] :- !.
 solve-hyp-loop Depth [HD|_] P Hyp R :- solve-hyp Depth P HD Hyp R.
 solve-hyp-loop Depth [_|TL] P Hyp R :- solve-hyp-loop Depth TL P Hyp R.
 
-% [solve-hyp Depth Program CurrentClause CurrentHyp Res]
-% Tries to solve CurrentHyp with the CurrentClause and gives
+% [solve-hyp Depth Program Currentinstance-clause CurrentHyp Res]
+% Tries to solve CurrentHyp with the Currentinstance-clause and gives
 % back Res, that is the list of remaining hypothesis
-pred solve-hyp i:int, i:list clause, i:clause, i:term, o:list term.
-solve-hyp Depth P (clause Head Hyps) Hd Res :- !,
+pred solve-hyp i:int, i:list instance-clause, i:instance-clause, i:term, o:list term.
+solve-hyp Depth P (instance-clause Head Hyps) Hd Res :- !,
   % print "the head is" Head "and the hyps is" Hyps "with head" Hd,
   Head = Hd,
   % print "------------------------------------ the head match ------------------------------------",
   precompile-list Depth P Hyps Res.
   % print "Should be at least one time".
-solve-hyp Depth P (lambda F) Hd Res :-
+solve-hyp Depth P (instance-lambda F) Hd Res :-
   solve-hyp Depth P (F D_) Hd Res.
 
 main :-
   findall-arity-one acc R,
-  entry-point 1 R R (app [(atom "F"), F_]) A,
-  generalize_evar.abs-evars A B _,
-  print "After compilation",
-  print B.
+  std.findall (precompile-list 2 R [app [(atom "F"), F_]] _) L,
+  print L.
+  % entry-point 1 R R (app [(atom "F"), F_]) A,
+  % generalize_evar.abs-evars A B _,
+  % print "After compilation",
+  % print B.

@@ -4,12 +4,10 @@ Elpi Override TC TC.Solver All.
 
 Require Import Bool.
 
-(* TODO: How to add the #[deterministic] pragma in front of the class? *)
-(* #[deterministic] Class A (T : Type) := {succ : T -> T}. *)
 Class A (T : Type) := {succ : T -> T}.
 #[local] Instance B : A nat := {succ n := S n}.
 Instance C : A bool := {succ b := negb b}.
-Instance Prod (X Y: Type) `(A X, A Y) : A (X * Y) := 
+Instance Prod (X Y: Type) `(A X, A Y) : A (X * Y) :=
   {succ b := match b with (a, b) => (succ a, succ b) end}.
 
 Elpi Accumulate TC.Solver lp:{{
@@ -21,7 +19,7 @@ Goal A (nat * (nat * bool)). apply _. Qed.
 
 Module M.
   Class B (T : nat).
-  Section A. 
+  Section A.
     Instance X : B 1. Qed.
     Goal B 1. apply _. Qed.
 
@@ -49,7 +47,7 @@ Elpi Query TC.Solver lp:{{
   % Small test for instance order
   sigma I L\
   std.findall (instance _ _ _) I,
-  std.map-filter I (x\y\ x = instance _ y {{:gref M.B}}) 
+  std.map-filter I (x\y\ x = instance _ y {{:gref M.B}})
     [{{:gref M.W}}, {{:gref M.Y}}, {{:gref M.Z}}].
 }}.
 
@@ -61,13 +59,17 @@ Module S.
 End S.
 
 Elpi Override TC TC.Solver None.
-Goal S.Cl 1 /\ S.Cl 2 /\ S.Cl 3.
-Proof. 
-  split. all:cycle 1.
-  split.
-  apply _.
+
+(* Fails since Cl1 is local to S *)
+Goal S.Cl 1. Fail apply _. Abort.
+
+(* Succeeds since Cl2 is global *)
+Goal S.Cl 2. apply _. Qed.
+
+Goal S.Cl 3.
+  (* Fails since Cl3 is in export mode *)
   Fail apply _.
   Import S.
+  (* Suceeds after import *)
   apply _.
-  Fail apply _.
-Abort.
+Qed.

@@ -72,17 +72,6 @@ namespace generalize_evar {
   }
 }
 
-pred precompile-class i:int, i:gref, o:list prop.
-precompile-class Depth ClassGR Clauses :-
-  precompile-class.aux Depth ClassGR [] {coq.env.typeof ClassGR} Clauses.
-
-pred precompile-class.aux i:int, i:gref, i:list term, i:term, o:list prop.
-precompile-class.aux Depth ClassGR L (prod _ _ X) Clauses :- !,
-  precompile-class.aux Depth ClassGR [V_ | L] (X V_) Clauses.
-precompile-class.aux Depth ClassGR Vars _ Clauses :-
-  coq.mk-app (global ClassGR) [V_ | Vars] App,
-  precompile-term Depth App Clauses.
-
 pred precompile-term i:int, i:term, o:list prop.
 precompile-term Depth T Clauses :-
   findall-arity-one instances P,
@@ -122,6 +111,21 @@ precompile-hyp Depth P (instance-lambda F) Hd Res :- precompile-hyp Depth P (F D
 precompile-hyp Depth P (instance-clause Head Hyps) Hd Res :- !,
   Head = Hd, precompile-hyp-list Depth P Hyps Res.
 
+pred precompile-class.aux i:int, i:gref, i:list term, i:term, o:list prop.
+precompile-class.aux Depth ClassGR L (prod _ _ X) Clauses :- !,
+  precompile-class.aux Depth ClassGR [V_ | L] (X V_) Clauses.
+precompile-class.aux Depth ClassGR Vars _ Clauses :-
+  coq.mk-app (global ClassGR) [V_ | Vars] App,
+  precompile-term Depth App Clauses.
+
+% [Precompile Depth ClassGR Clauses]
+% Takes the depth of compilation and the gref of a class and returns Clauses.
+% Clauses is the list of the precompiled instances
+pred precompile-class i:int, i:gref, o:list prop.
+precompile-class Depth ClassGR Clauses :-
+  Depth1 is Depth + 1,
+  precompile-class.aux Depth1 ClassGR [] {coq.env.typeof ClassGR} Clauses.
+
 pred term->prop i:term, o:prop.
 term->prop T P :-
   coq.safe-dest-app T (global ClassGR) Args,
@@ -137,3 +141,9 @@ instance-clause->prop (instance-clause Head PremiseTerms) Clause :-
       (Clause = (Q :- Premises)).
 instance-clause->prop (instance-lambda H) (pi x\ Clause x) :-
   pi x\ instance-clause->prop (H x) (Clause x).
+
+pred precompile-class-and-accumulate i:int, i:gref.
+precompile-class-and-accumulate Depth ClassGR :-
+  precompile-class Depth ClassGR Clauses,
+  % TODO: what about instance priority ?
+  std.forall Clauses (add-tc-db _ _).

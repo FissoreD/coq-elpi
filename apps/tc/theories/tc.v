@@ -112,12 +112,19 @@ Elpi Command TC.precompile.
 Elpi Accumulate Db tc.db.
 Elpi Accumulate Db tc_options.db.
 Elpi Accumulate File instance_precompilation.
-Elpi Typecheck.
 Elpi Accumulate  lp:{{
-  main [int Depth, str ClassStr] :-
+  main [int Depth, str ClassStr, str "show"] :-
     coq.locate ClassStr ClassGR,
     precompile-class Depth ClassGR R,
     coq.say R.
+  main [int Depth, str ClassStr] :-
+    coq.locate ClassStr ClassGR,
+    precompile-class-and-accumulate Depth ClassGR.
+  main _ :-
+    coq.error "Invalid class to TC.precompile.
+    A valid call is [TC.precompile Depth Class] where
+    - Depth is the Depth of precompilation
+    - Class is the name of the class to be precompiled".
 }}.
 Elpi Typecheck.
 
@@ -130,6 +137,7 @@ Elpi Export TC.Solver.
 Elpi Export TC.Compiler.
 Elpi Export TC.Get_class_info.
 Elpi Export TC.Set_deterministic.
+Elpi Export TC.precompile.
 
 Elpi TC.AddAllClasses.
 Elpi TC.AddAllInstances.

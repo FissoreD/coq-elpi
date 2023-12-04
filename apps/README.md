@@ -16,3 +16,11 @@ A Namespace Emulation System.
 ### Locker
 
 A kit to lock definitions hard.
+
+### Coercion
+
+A kit to reason about coercions
+
+### Tc
+
+A type class solver

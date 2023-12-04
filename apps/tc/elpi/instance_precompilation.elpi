@@ -104,7 +104,7 @@ precompile-hyp-list Depth P [G | GS] R :-
   Depth > 0,
   Depth1 is Depth - 1,
   precompile-hyp-loop Depth1 P P G HD,
-  precompile-hyp-list Depth1 P GS TL,
+  precompile-hyp-list Depth P GS TL,
   std.append HD TL R.
 
 % [precompile-hyp-loop Depth Program ProgramMem Hyp Res]

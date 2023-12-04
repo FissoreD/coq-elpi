@@ -8,9 +8,9 @@ Elpi Accumulate lp:{{
   count GR Len :-
     if (const _ = GR)
       (std.findall (instance _ _ GR) Cl,
-      std.assert! ({std.length Cl} = Len) 
+      std.assert! ({std.length Cl} = Len)
       "Unexpected number of instances")
-      true. 
+      true.
 
   main [str E, int Len] :-
     coq.locate E GR,
@@ -36,16 +36,6 @@ Module test3.
   Elpi len_test Eqb 3.
 End test3.
 Reset test3.
-
-
-(* About RewriteRelation.
-
-About RelationClasses.RewriteRelation.
-
-
-Elpi Query TC.Solver lp:{{
-  coq.gref->id {{:gref RelationClasses.RewriteRelation}} L. 
-}}. *)
 
 Module test4.
   Elpi AddAllClasses.

@@ -2,6 +2,8 @@ From Coq Require Export List.
 From elpi.apps Require Export tc.
 Global Generalizable All Variables.
 
+(* Test where an instance is created from an indt *)
+
 Elpi Override TC TC.Solver All.
 
 Class ElemOf A B := elem_of: A -> B -> Prop.

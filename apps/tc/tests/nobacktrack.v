@@ -1,7 +1,8 @@
 From elpi.apps Require Import tc.
 
-Elpi Debug "simple-compiler".
 Set TC NameShortPath.
+
+(* Test about deterministic type classes *)
 
 Module A.
 
@@ -32,11 +33,11 @@ Module B.
   Elpi TC.Set_deterministic A.
 
   Global Instance A1 : A bool := {f x := x}.
-  Global Instance A2 `(A bool) : A (bool * bool) := 
+  Global Instance A2 `(A bool) : A (bool * bool) :=
     {f x := x}.
-  Global Instance A3 `(A nat) : A (bool * bool) := 
+  Global Instance A3 `(A nat) : A (bool * bool) :=
     {f x := x}.
 
   Goal A (bool * bool). apply _. Qed.
-  
+
 End B.

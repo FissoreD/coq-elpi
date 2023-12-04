@@ -1,5 +1,10 @@
 From elpi Require Import elpi.
 
+(*
+  A prototype of create_tc_predicate.elpi in tc/elpi.
+  The goal is to compile the predicates representing classes automatically
+*)
+
 Elpi Db tc.db lp:{{
   pred classes i:gref.
 
@@ -35,7 +40,7 @@ Elpi Db tc.db lp:{{
   pred add-tc-pred i:gref, i:int.
   add-tc-pred Gr NbArgs :-
     not (classes Gr),
-    make-tc-modes NbArgs Modes, 
+    make-tc-modes NbArgs Modes,
     gref->pred-name Gr GrStr,
     D is "pred " ^ GrStr ^ " " ^ Modes ^ ".",
     coq.elpi.add-predicate "tc.db" D,
@@ -46,7 +51,7 @@ Elpi Db tc.db lp:{{
   make-tc Ty Inst Hyp Clause :-
     app [global TC | TL] = Ty,
     gref->pred-name TC TC_Str,
-    std.append TL [Inst] Args, 
+    std.append TL [Inst] Args,
     std.length Args ArgsLen,
     add-tc-pred TC ArgsLen,
     coq.elpi.predicate TC_Str Args Q,
@@ -54,11 +59,11 @@ Elpi Db tc.db lp:{{
 
   pred app-has-class i:term, o:gref.
   app-has-class (prod _ _ T) C :- pi x\ app-has-class (T x) C.
-  app-has-class (app [global T|_]) T :- coq.TC.class? T. 
+  app-has-class (app [global T|_]) T :- coq.TC.class? T.
 
   pred compile i:term, i:term, i:list prop, i:list term, o:prop.
   compile (prod _ T F) I ListRHS ListVar (pi x\ C x) :- !,
-    pi p cond\ sigma Clause L\ 
+    pi p cond\ sigma Clause L\
       if (app-has-class T _) (compile T p [] [] Clause, L = [Clause | ListRHS]) (L = ListRHS),
       compile (F p) I L [p | ListVar] (C p).
   compile Ty I Premises ListVar Clause :- !,
@@ -70,7 +75,7 @@ Elpi Db tc.db lp:{{
 Elpi Command addClass.
 Elpi Accumulate Db tc.db.
 Elpi Accumulate lp:{{
-  main [str TC_Name] :-  
+  main [str TC_Name] :-
     coq.locate TC_Name TC_Gr,
     coq.env.typeof TC_Gr TC_Ty,
     coq.count-prods TC_Ty N',
@@ -101,11 +106,11 @@ Elpi Accumulate lp:{{
     var Sol,
     Ty = app [global TC | TL'],
     std.append TL' [X] TL,
-    if (coq.elpi.predicate {gref->pred-name TC} TL Q, Q) 
+    if (coq.elpi.predicate {gref->pred-name TC} TL Q, Q)
       (
-        refine X G GL; 
+        refine X G GL;
         coq.say "illtyped solution:" {coq.term->string X}
-      ) 
+      )
       (GL = [seal G]).
 }}.
 Elpi Typecheck.

@@ -7,6 +7,7 @@ From elpi.apps.tc Extra Dependency "tc_aux.elpi" as tc_aux.
 From elpi.apps.tc Extra Dependency "compiler.elpi" as compiler.
 From elpi.apps.tc Extra Dependency "solver.elpi" as solver.
 From elpi.apps.tc Extra Dependency "create_tc_predicate.elpi" as create_tc_predicate.
+From elpi.apps.tc Extra Dependency "instance_precompilation.elpi" as instance_precompilation.
 
 From elpi.apps Require Import db.
 From elpi.apps Require Export add_commands.
@@ -107,37 +108,18 @@ Elpi Accumulate lp:{{
 }}.
 Elpi Typecheck.
 
-Elpi Register TC Compiler TC.Compiler.
-Class cl (i : nat).
-Instance zero : cl 0. Qed.
-Instance n (N : nat) : cl N -> cl (S N). Qed.
-
-Elpi Command ttt1.
+Elpi Command TC.precompile.
 Elpi Accumulate Db tc.db.
 Elpi Accumulate Db tc_options.db.
-From elpi.apps.tc Extra Dependency "instance_precompilation.elpi" as instance_precompilation.
-
 Elpi Accumulate File instance_precompilation.
 Elpi Typecheck.
 Elpi Accumulate  lp:{{
-  shorten precompilation.{instances, instance-clause, instance-lambda}.
-  precompilation.instances (instance-clause {{cl 0 zero}} []).
-  precompilation.instances (instance-lambda (N\ (instance-lambda S\ instance-clause {{cl (S lp:N) (n lp:S)}} [{{cl lp:N lp:S}}]))).
+  main [int Depth, str ClassStr] :-
+    coq.locate ClassStr ClassGR,
+    precompile-class Depth ClassGR R,
+    coq.say R.
 }}.
 Elpi Typecheck.
-
-Elpi Query  lp:{{
-  coq.env.typeof {{:gref cl}} C.
-}}.
-
-Elpi Query  lp:{{
-  sigma R X Y K M A B L Q\
-  precompile-class 2 {{:gref cl}} R,
-  coq.say R.
-}}.
-Elpi Typecheck.
-
-xx.
 
 Elpi Override TC TC.Solver All.
 

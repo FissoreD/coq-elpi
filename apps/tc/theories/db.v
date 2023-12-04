@@ -103,8 +103,8 @@ Elpi Db tc.db lp:{{
       rule. In the example below, the instances `inst1` and `inst2`
       would produce the two rules:
         ```elpi
-          instances (clause {{cl}} [{{nat}}, {{inst1}}] []).
-          instances (lambda A (lambda S\ clause {{cl}} [{{lp:A * lp:A}}, {{inst2 lp:A lp:S}}] [tc-cl A S]).
+          instances (instance-clause {{cl}} [{{nat}}, {{inst1}}] []).
+          instances (instance-lambda A (instance-lambda S\ instance-clause {{cl}} [{{lp:A * lp:A}}, {{inst2 lp:A lp:S}}] [tc-cl A S]).
         ```
     */
     kind instance-clause type.

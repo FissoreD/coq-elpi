@@ -40,7 +40,6 @@ Section numbers.
   TC.precompile 4 number.
 
   Elpi Typecheck TC.Solver.
-  Elpi Trace Browser.
   Goal number 3. apply _. Qed.
 End numbers.
 
@@ -131,3 +130,4 @@ Section failFast.
     Time apply _.
 
   Qed.
+End failFast.

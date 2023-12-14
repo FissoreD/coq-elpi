@@ -118,6 +118,7 @@ Elpi Db tc.db lp:{{
     type instance-lambda (term -> instance-clause) -> instance-clause.
     % TODO: an instance-clause may contain props in the list of premises
 
+    :index (30)
     pred instances o:instance-clause.
   }
 }}.

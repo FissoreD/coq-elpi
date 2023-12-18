@@ -3,9 +3,6 @@
 
 accumulate base.
 
-% Contains the list of classes that
-% cannot be compiled
-
 % returns the TC from the type of an instance
 % TODO: This could be replaced with an api 
 % coq.TC.get-class-of-inst i:gref, o:gref
@@ -20,14 +17,6 @@ pred drop-last i:list A, i:list A, o:list A.
 drop-last [X | XS] [Y | YS] L :-
   same_term X Y, !, drop-last XS YS L.
 drop-last L [] L' :- std.rev L L'.
-
-pred instances-of-current-section o:list gref.
-:name "MySectionEndHook"
-instances-of-current-section InstsFiltered :-
-  coq.env.current-section-path SectionPath,
-  std.findall (instance SectionPath _ _) Insts,
-  coq.env.section SectionVars,
-  std.map-filter Insts (x\r\ sigma X\ instance _ r _ = x, const X = r, not(std.mem SectionVars X)) InstsFiltered.
 
 pred is-instance-gr i:gref.
 is-instance-gr GR :-

@@ -113,14 +113,14 @@ compile-aux (prod N T F) I RevPremises ListVar IsPositive Clause :- !,
 compile-aux Ty I RevPremises ListVar _ Clause :- 
   not (is-option-active oTC-use-pattern-fragment-compiler), !,
   std.rev RevPremises Premises,
-  coq.mk-app I {std.rev ListVar} AppInst,
-  make-tc Ty AppInst Premises Clause.
+  coq.mk-app I {std.rev ListVar} Proof,
+  make-tc Ty Proof Premises Clause.
 compile-aux Ty I RevPremises ListVar IsPositive Clause :- !,
   std.rev RevPremises Premises,
-  coq.mk-app I {std.rev ListVar} AppInst,
-  std.append {get-pattern-fragment Ty} {get-pattern-fragment AppInst} Term-to-be-fixed,
+  coq.mk-app I {std.rev ListVar} Proof,
+  std.append {get-pattern-fragment Ty} {get-pattern-fragment Proof} Term-to-be-fixed,
   std.fold Term-to-be-fixed 0 (e\acc\r\ sigma L X\ e = app X, std.length X L, r is acc + L - 1) Len,
-  remove-ho-unification IsPositive Len Ty AppInst Premises Term-to-be-fixed [] [] [] [] [] Clause.
+  remove-ho-unification IsPositive Len Ty Proof Premises Term-to-be-fixed [] [] [] [] [] Clause.
 
 % build a list of Clauses of type tc to be temporarly added to the 
 % database, used in theorems having assumptions.

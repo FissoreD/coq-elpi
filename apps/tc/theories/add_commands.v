@@ -5,6 +5,7 @@ From elpi.apps Require Import db.
 
 From elpi.apps.tc Extra Dependency "tc_aux.elpi" as tc_aux.
 From elpi.apps.tc Extra Dependency "compiler.elpi" as compiler.
+From elpi.apps.tc Extra Dependency "compiler_raw.elpi" as compiler_raw.
 From elpi.apps.tc Extra Dependency "parser_addInstances.elpi" as parser_addInstances.
 From elpi.apps.tc Extra Dependency "solver.elpi" as solver.
 From elpi.apps.tc Extra Dependency "create_tc_predicate.elpi" as create_tc_predicate.
@@ -17,6 +18,18 @@ Elpi Accumulate lp:{{
   main L :- 
     args->str-list L L1,
     std.forall {coq.TC.db-tc} (x\ add-tc-or-inst-gr [] L1 [x]).
+}}.
+Elpi Typecheck.
+
+Elpi Command TC.AddRawInstances.
+Elpi Accumulate Db tc.db.
+Elpi Accumulate Db tc_options.db.
+Elpi Accumulate File compiler_raw.
+Elpi Accumulate lp:{{
+  shorten precompilation.{add-tc-or-inst-gr}.
+  main L :- 
+    args->str-list L L1,
+    add-tc-or-inst-gr {std.map L1 coq.locate}.
 }}.
 Elpi Typecheck.
 

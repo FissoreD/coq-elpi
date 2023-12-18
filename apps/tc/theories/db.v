@@ -107,18 +107,18 @@ Elpi Db tc.db lp:{{
           instances (instance-lambda A (instance-lambda S\ instance-clause {{cl}} [{{lp:A * lp:A}}, {{inst2 lp:A lp:S}}] [tc-cl A S]).
         ```
     */
-    kind instance-clause type.
+    kind raw-clause type.
     /*
       [clause cl args body]
       - cl   : is the class corresponding to the current rule
       - args : represents the list of the argument of the current class + its solution
       - body : is the list of the premises of the current rule
     */
-    type instance-clause term -> list term -> instance-clause.
-    type instance-lambda (term -> instance-clause) -> instance-clause.
+    type instance-clause term -> list raw-clause -> raw-clause.
+    type instance-lambda (term -> raw-clause) -> raw-clause.
     % TODO: an instance-clause may contain props in the list of premises
 
     :index (30)
-    pred instances o:instance-clause.
+    pred instances o:raw-clause.
   }
 }}.

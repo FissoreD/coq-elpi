@@ -1,44 +1,45 @@
 accumulate base.
 accumulate tc_aux.
 
-shorten precompilation.{instance-clause, instance-lambda, instances}.
+shorten precompilation.{instance-clause, instance-lambda, instances, raw-clause}.
 
 namespace generalize_evar {
     % we add a new constructor to terms to represent terms to be abstracted
   type abs int -> term.
 
-  pred copy-instance-clause i:instance-clause, o:instance-clause.
-  copy-instance-clause (instance-clause A B) (instance-clause A' B') :- copy A A', std.map B copy B'.
-  copy-instance-clause (instance-lambda A) (instance-lambda A') :-
-    pi x\ copy-instance-clause (A x) (A' x).
+  pred copy-raw-clause i:raw-clause, o:raw-clause.
+  copy-raw-clause (instance-clause A B) (instance-clause A' B') :- copy A A', std.map B copy-raw-clause B'.
+  copy-raw-clause (instance-lambda A) (instance-lambda A') :-
+    pi x\ copy-raw-clause (A x) (A' x).
 
-  pred fold-map-instance-clause i:instance-clause, i:A, o:instance-clause, o:A.
-  fold-map-instance-clause (instance-clause A B) C (instance-clause A' B') C' :-
-    std.fold-map [A | B] C fold-map [A' | B'] C'.
-  fold-map-instance-clause (instance-lambda A) C (instance-lambda A') C' :-
-    pi x\ fold-map-instance-clause (A x) C (A' x) C'.
+  pred fold-map-raw-clause i:raw-clause, i:A, o:raw-clause, o:A.
+  fold-map-raw-clause (instance-clause A B) C (instance-clause A' B') C'' :-
+    fold-map A C A' C',
+    std.fold-map B C' fold-map-raw-clause B' C''.
+  fold-map-raw-clause (instance-lambda A) C (instance-lambda A') C' :-
+    pi x\ fold-map-raw-clause (A x) C (A' x) C'.
 
 
   % bind back abstracted subterms
-  pred bind i:int, i:int, i:instance-clause, o:instance-clause.
+  pred bind i:int, i:int, i:raw-clause, o:raw-clause.
   bind I M T T1 :- M > I, !,
     T1 = instance-lambda B,
     N is I + 1,
     pi x\                           % we allocate the fresh symbol for (abs M)
       (copy (abs N) x :- !) =>      % we schedule the replacement (abs M) -> x
       bind N M T (B x).
-  bind M M T T1 :- copy-instance-clause T T1', T1 = T1'.         % we perform all the replacements
+  bind M M T T1 :- copy-raw-clause T T1', T1 = T1'.         % we perform all the replacements
 
   % for a term with M holes, returns a term with M variables to fill these holes
-  % the instance-clause see is only generated for a term if it hasn't been seen before
+  % the raw-clause see is only generated for a term if it hasn't been seen before
   % the term might need to be typechecked first or main generates extra holes for the
   % type of the parameters
-  pred abs-evars i:instance-clause, o:instance-clause, o:int.
+  pred abs-evars i:raw-clause, o:raw-clause, o:int.
   abs-evars T1 T3 M :- std.do! [
     % we put (abs N) in place of each occurrence of the same hole
     (pi T Ty N N' M \ fold-map T N (abs M) M :- var T, not (seen? T _), !, M is N + 1, seen! T M) =>
     (pi T N M \ fold-map T N (abs M) N :- var T, seen? T M, !) =>
-      fold-map-instance-clause T1 0 T2 M,
+      fold-map-raw-clause T1 0 T2 M,
     % we abstract M holes (M abs nodes)
     bind 0 M T2 T3,
     % cleanup constraint store
@@ -72,26 +73,34 @@ namespace generalize_evar {
   }
 }
 
+pred debug-instance-creation i:prop.
+:if "debug-instance-creation"
+debug-instance-creation P :- !, P.
+debug-instance-creation _.
+
 pred precompile-term i:int, i:term, o:list prop.
 precompile-term Depth T Clauses :-
   findall-arity-one instances P,
-  std.findall (precompile-hyp-list Depth P [T] _) L,
+  debug-instance-creation (coq.say "Going to precompile T"),
+  std.findall (precompile-hyp-list Depth P [instance-clause T []] _) L,
   std.map L (x\r\ sigma Head Hyps Generalized Cl\
-    x = precompile-hyp-list _ _ [Head] Hyps,
+    std.assert! (x = precompile-hyp-list _ _ [instance-clause Head []] Hyps)
+                "Error in precompile term",
     generalize_evar.abs-evars (instance-clause Head Hyps) Generalized _,
-    instance-clause->prop Generalized r) Clauses.
+    raw-clause->prop Generalized r) Clauses.
 
 % [precompile-hyp-list Depth Program Hyps R]
 % - Depth is the depth of search
 % - Program is the list of instance-clauses of the program
-% - Hyps is the list of premisis of a instance-clause
+% - Hyps is the list of premisis of a raw-clause
 % - R is the list of new premisis
-pred precompile-hyp-list i:int, i:list instance-clause, i:list term, o:list term.
+pred precompile-hyp-list i:int, i:list raw-clause, i:list raw-clause, o:list raw-clause.
 precompile-hyp-list _ _ [] [] :- !.
 precompile-hyp-list 0 _ P P :- !.
 precompile-hyp-list Depth P [G | GS] R :-
   Depth > 0,
   Depth1 is Depth - 1,
+  debug-instance-creation (coq.say "in hyp-list: precompiling" G),
   precompile-hyp-loop Depth1 P P G HD,
   precompile-hyp-list Depth P GS TL,
   std.append HD TL R.
@@ -99,17 +108,29 @@ precompile-hyp-list Depth P [G | GS] R :-
 % [precompile-hyp-loop Depth Program ProgramMem Hyp Res]
 % Solve the current Hyp by looping to the current program, ProgramMem
 % is the entire program and is used to do the recursive calls
-pred precompile-hyp-loop i:int, i:list instance-clause, i:list instance-clause, i:term, o:list term.
+pred precompile-hyp-loop i:int, i:list raw-clause, i:list raw-clause, i:raw-clause, o:list raw-clause.
 precompile-hyp-loop Depth [HD|_] P Hyp R :- precompile-hyp Depth P HD Hyp R.
 precompile-hyp-loop Depth [_|TL] P Hyp R :- precompile-hyp-loop Depth TL P Hyp R.
 
 % [precompile-hyp Depth Program Currentinstance-clause CurrentHyp Res]
 % Tries to solve CurrentHyp with the Currentinstance-clause and gives
 % back Res, that is the list of remaining hypothesis
-pred precompile-hyp i:int, i:list instance-clause, i:instance-clause, i:term, o:list term.
-precompile-hyp Depth P (instance-lambda F) Hd Res :- precompile-hyp Depth P (F D_) Hd Res.
-precompile-hyp Depth P (instance-clause Head Hyps) Hd Res :- !,
-  Head = Hd, precompile-hyp-list Depth P Hyps Res.
+pred precompile-hyp i:int, i:list raw-clause, i:raw-clause, i:raw-clause, o:list raw-clause.
+precompile-hyp Depth P (instance-lambda F) Hd Res :- !, precompile-hyp Depth P (F D_) Hd Res.
+precompile-hyp Depth P X (instance-lambda Hd) Res :- !, precompile-hyp Depth P X (Hd D_) Res.
+precompile-hyp Depth P (instance-clause Head Hyps) (instance-clause Hd Hys) Res :- !,
+  debug-instance-creation (
+    coq.say "Unifying the heads",
+    coq.say Head "---------------------------------------------" Hd),
+  Head = Hd,
+  debug-instance-creation (
+    coq.say "With success",
+    coq.say "Start to solve the remaining hyps",
+    coq.say Hyps,
+    coq.say "-----------------------------"
+  ),
+  std.append Hys P P1,
+  precompile-hyp-list Depth P1 Hyps Res.
 
 pred precompile-class.aux i:int, i:gref, i:list term, i:term, o:list prop.
 precompile-class.aux Depth ClassGR L (prod _ _ X) Clauses :- !,
@@ -128,19 +149,20 @@ precompile-class Depth ClassGR Clauses :-
 
 pred term->prop i:term, o:prop.
 term->prop T P :-
-  coq.safe-dest-app T (global ClassGR) Args,
+  coq.safe-dest-app T HD Args,
+  get-TC-of-inst-type HD ClassGR,
   gref->pred-name ClassGR ClassName,
   coq.elpi.predicate ClassName Args P.
 
-pred instance-clause->prop i:instance-clause, o:prop.
-instance-clause->prop (instance-clause Head PremiseTerms) Clause :-
+pred raw-clause->prop i:raw-clause, o:prop.
+raw-clause->prop (instance-clause Head PremiseTerms) Clause :-
   term->prop Head Q,
-  std.map PremiseTerms term->prop Premises,
+  std.map PremiseTerms raw-clause->prop Premises,
   if2 (Premises = []) (Clause = Q)
       (Premises = [Hd]) (Clause = (Q :- Hd))
       (Clause = (Q :- Premises)).
-instance-clause->prop (instance-lambda H) (pi x\ Clause x) :-
-  pi x\ instance-clause->prop (H x) (Clause x).
+raw-clause->prop (instance-lambda H) (pi x\ Clause x) :-
+  pi x\ raw-clause->prop (H x) (Clause x).
 
 pred precompile-class-and-accumulate i:int, i:gref.
 precompile-class-and-accumulate Depth ClassGR :-

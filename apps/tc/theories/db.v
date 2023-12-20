@@ -114,6 +114,11 @@ Elpi Db tc.db lp:{{
       - args : represents the list of the argument of the current class + its solution
       - body : is the list of the premises of the current rule
     */
+    
+    kind body-arg type.
+    type body-raw  raw-clause -> body-arg.
+    type body-prop prop -> body-arg.
+    
     type instance-clause term -> list raw-clause -> raw-clause.
     type instance-lambda (term -> raw-clause) -> raw-clause.
     % TODO: an instance-clause may contain props in the list of premises

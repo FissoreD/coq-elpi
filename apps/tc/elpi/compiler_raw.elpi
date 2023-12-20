@@ -20,11 +20,11 @@ namespace precompilation {
     copy InstType InstType', !,
     compile-aux InstType' InstTerm [] [] tt Clause.
   compile-aux-preprocess InstType InstTerm [Univ | UnivL] UnivInstL (instance-lambda (x\ Clause x)) :-
-    pi x\ copy (sort (typ Univ)) (sort (typ x)) => 
-      compile-aux-preprocess InstType InstTerm UnivL UnivInstL (Clause (sort (typ x))).
+    pi x\ copy (sort (typ Univ)) (/*sort (typ x)*/ x) => 
+      compile-aux-preprocess InstType InstTerm UnivL UnivInstL (Clause x).
   compile-aux-preprocess InstType InstTerm [] [UnivInst | UnivInstL] (instance-lambda (x\ Clause x)) :-
-    pi x\ copy (pglobal A UnivInst) (pglobal A x) => 
-      compile-aux-preprocess InstType InstTerm [] UnivInstL (Clause ((pglobal A x))).
+    pi x\ copy (pglobal A_ UnivInst) (/*pglobal A x*/ x) => 
+      compile-aux-preprocess InstType InstTerm [] UnivInstL (Clause (/*(pglobal A x)*/x)).
 
   /*
   [compile-aux InstType InstTerm Premises PiAccRev IsPositive Clause]
@@ -115,7 +115,7 @@ namespace precompilation {
       ).
   add-inst.aux Inst _ _ _ :- 
     @global! => add-tc-db _ _ (banned Inst),
-    coq.warning "Not-added" "TC_solver" "Warning : Cannot compile " Inst "since it is pglobal".
+    coq.error "TC_solver" "Cannot compile " Inst.
 
   pred add-inst i:gref, i:gref, i:string, i:int.
   add-inst Inst TC LocalityStr Prio :-

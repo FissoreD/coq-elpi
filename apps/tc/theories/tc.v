@@ -113,11 +113,11 @@ Elpi Accumulate Db tc.db.
 Elpi Accumulate Db tc_options.db.
 Elpi Accumulate File instance_precompilation.
 Elpi Accumulate  lp:{{
-  main [int Depth, str ClassStr, str "show"] :-
+  main [int Depth, str ClassStr, str "show"] :- !,
     coq.locate ClassStr ClassGR,
     precompile-class Depth ClassGR R,
     coq.say R.
-  main [int Depth, str ClassStr] :-
+  main [int Depth, str ClassStr] :- !,
     coq.locate ClassStr ClassGR,
     precompile-class-and-accumulate Depth ClassGR.
   main _ :-

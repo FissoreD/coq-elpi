@@ -3,7 +3,7 @@ Elpi Override TC TC.Solver All.
 Set TC NameShortPath.
 
 (*
-  We deactivate TC.Compiler to
+  We deactivate TC.Compiler to add the instances after precompilation
 *)
 Elpi TC Deactivate Observer TC.Compiler.
 
@@ -11,21 +11,51 @@ Elpi Accumulate TC.Solver lp:{{
   :after "0" msolve _ _ :- coq.say "Solving in elpi", fail.
 }}.
 
-Section numbers.
+Elpi Accumulate TC.precompile lp:{{
+  :after "to-debug-instance-creation"
+  to-debug-instance-creation.
+}}.
+
+(* Section compile1.
+  Class A (i: nat).
+  Instance i : A 0 -> A 1. Qed.
+
+  Elpi TC.AddAllClasses.
+  Elpi TC.AddRawInstances A.
+  Elpi TC.precompile 5 A show.
+End compile1. *)
+
+Section A.
+
+  Class B (i:nat).
+  Class C (i: nat).
+  Class D (i: nat).
+
+  Instance i1 (x : nat) : B x -> C x. Qed.
+  Instance i2 : B 0. Qed.
+  Instance i3 : B 1. Qed.
+  Instance i4 : D 0. Qed.
+
+  Elpi TC.AddAllClasses.
+  Elpi TC.AddRawInstances B C.
+  Elpi TC.precompile 5 C show.
+End A.
+
+XX.
+(* Section numbers.
   Class number (i:nat).
   Elpi Accumulate tc.db lp:{{
     :index (50)
     pred tc-number o:term, o:term.
   }}.
 
-  Instance zero : number O. Qed.
+  (* Instance zero : number O. Qed. *)
   Instance succ (N : nat): number N -> number (S N). Qed.
 
-  Elpi TC.precompile 5 number show.
-  Elpi TC.AddRawInstances zero.
+  (* Elpi TC.AddRawInstances zero. *)
   Elpi TC.AddRawInstances succ.
 
-  Elpi TC.precompile 5 number show.
+  Elpi TC.precompile 2 number show.
   Elpi TC.precompile 5 number.
 
   Goal number 3. apply _. Qed.
@@ -93,4 +123,4 @@ Section arrowInPremise.
   Goal class3 0.
     apply _.
   Qed.
-End arrowInPremise.
+End arrowInPremise. *)

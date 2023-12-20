@@ -1,7 +1,7 @@
 accumulate base.
 accumulate tc_aux.
 
-shorten precompilation.{instance-clause, instance-lambda, instances, raw-clause, body-raw, body-prop, body-arg}.
+shorten precompilation.{instance-clause, instance-lambda, instances, raw-clause, body-raw, body-prop, body-arg, body-search}.
 
 pred wrap-body-raw i:raw-clause, o:body-arg.
 wrap-body-raw C (body-raw C).
@@ -100,9 +100,9 @@ precompile-term Depth T Clauses :-
   findall-arity-one instances P,
   if (true)
   (debug-instance-creation (coq.say "Going to precompile T"),
-  std.findall (precompile-hyp-list Depth P [instance-clause T []] _) L,
+  std.findall (precompile-hyp-list Depth P [body-raw (instance-clause T [])] _) L,
   std.map L (x\r\ sigma Head Hyps Generalized Cl Hyps'\
-    std.assert! (x = precompile-hyp-list _ _ [instance-clause Head []] Hyps)
+    std.assert! (x = precompile-hyp-list _ _ [body-raw (instance-clause Head [])] Hyps)
                 "Error in precompile term",
     std.map Hyps wrap-body-raw Hyps',
     generalize_evar.abs-evars (instance-clause Head Hyps') Generalized _,
@@ -133,18 +133,31 @@ precompile-term Depth T Clauses :-
 % - Program is the list of instance-clauses of the program
 % - Hyps is the list of premisis of a raw-clause
 % - R is the list of new premisis
-pred precompile-hyp-list i:int, i:list raw-clause, i:list raw-clause, o:list raw-clause.
+pred precompile-hyp-list i:int, i:list raw-clause, i:list body-arg, o:list raw-clause.
 precompile-hyp-list _ _ [] [] :- !.
-precompile-hyp-list 0 _ P P :- !.
-precompile-hyp-list Depth P [G | GS] R :-
+precompile-hyp-list 0 _ P P' :- !, std.map P unwrap-body-raw P'. /* TODO: attention here */
+precompile-hyp-list Depth P [body-raw G | GS] R :-
   Depth > 0,
   Depth1 is Depth - 1,
-  debug-instance-creation (coq.say "in hyp-list: precompiling" G),
+  debug-instance-creation (coq.say "in hyp-list: precompiling raw" G),
   (precompile-hyp-loop Depth1 P P G HD 
     ; [G] = HD /* The premise has no solution, we return it has it is */
   ),
   precompile-hyp-list Depth1 P GS TL,
   std.append HD TL R.
+precompile-hyp-list Depth P [body-prop G | GS] R :- std.do![
+  Depth > 0,
+  Depth1 is Depth - 1,
+  debug-instance-creation (coq.say "in hyp-list: precompiling prop" G),
+  G, !,
+  debug-instance-creation (coq.say "in hyp-list: start to solve the remaining goals" GS),
+  precompile-hyp-list Depth1 P GS R].
+precompile-hyp-list Depth P [body-search [HD | TL] | GS] R :- !,
+  Depth > 0,
+  Depth1 is Depth - 1,
+  debug-instance-creation (coq.say "in hyp-list: precompiling search"),
+  coq.mk-app HD TL APP,
+  precompile-hyp-list Depth1 P [body-raw (instance-clause APP []) | GS] R.
 
 % [precompile-hyp-loop Depth Program ProgramMem Hyp Res]
 % Solve the current Hyp by looping to the current program, ProgramMem
@@ -162,7 +175,9 @@ precompile-hyp Depth P X (instance-lambda Hd) Res :- !, precompile-hyp Depth P X
 precompile-hyp Depth P (instance-clause Head Hyps) (instance-clause Hd Hys) Res :-
   debug-instance-creation (
     coq.say "Unifying the heads",
-    coq.say Head "---------------------------------------------" Hd),
+    coq.say Head,
+    coq.say "---------------------------------------------",
+    coq.say Hd),
   (Head = Hd, !; debug-instance-creation (coq.say "fail to unify"), fail), !,
   debug-instance-creation (
     coq.say "With success",
@@ -172,9 +187,8 @@ precompile-hyp Depth P (instance-clause Head Hyps) (instance-clause Hd Hys) Res 
   ),
   /* TODO: work with the hypotheses... */
   std.map Hys unwrap-body-raw Hys', 
-  std.map Hyps unwrap-body-raw Hyps', 
   std.append Hys' P P1,
-  precompile-hyp-list Depth P1 Hyps' Res.
+  precompile-hyp-list Depth P1 Hyps Res.
 
 pred precompile-class.aux i:int, i:gref, i:list term, i:term, o:list prop.
 precompile-class.aux Depth ClassGR L (prod _ _ X) Clauses :- !,

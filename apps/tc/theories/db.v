@@ -118,6 +118,7 @@ Elpi Db tc.db lp:{{
     kind body-arg type.
     type body-raw  raw-clause -> body-arg.
     type body-prop prop -> body-arg.
+    type body-search list term -> body-arg.
     
     type instance-clause term -> list body-arg -> raw-clause.
     type instance-lambda (term -> raw-clause) -> raw-clause.

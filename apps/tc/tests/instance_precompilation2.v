@@ -11,10 +11,10 @@ Elpi Accumulate TC.Solver lp:{{
   :after "0" msolve _ _ :- coq.say "Solving in elpi", fail.
 }}.
 
-Elpi Accumulate TC.precompile lp:{{
+(* Elpi Accumulate TC.precompile lp:{{
   :after "to-debug-instance-creation"
   to-debug-instance-creation.
-}}.
+}}. *)
 
 (* Section compile1.
   Class A (i: nat).
@@ -38,6 +38,12 @@ Section A.
 
   Elpi TC.AddAllClasses.
   Elpi TC.AddRawInstances B C.
+
+  Elpi Query TC.precompile lp:{{
+    precompile-class 5 {{:gref C}} R,
+    % TODO: the right number should be 3 : we have to remove tc-C c0 c1 :- tc-C c0 c1
+    std.assert! (std.length R 4) "Invalid number of generated clauses".
+  }}.
   Elpi TC.precompile 5 C show.
 End A.
 

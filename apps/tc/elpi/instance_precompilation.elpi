@@ -1,21 +1,35 @@
 accumulate base.
 accumulate tc_aux.
 
-shorten precompilation.{instance-clause, instance-lambda, instances, raw-clause}.
+shorten precompilation.{instance-clause, instance-lambda, instances, raw-clause, body-raw, body-prop, body-arg}.
+
+pred wrap-body-raw i:raw-clause, o:body-arg.
+wrap-body-raw C (body-raw C).
+
+pred unwrap-body-raw i:body-arg, o:raw-clause.
+unwrap-body-raw (body-raw C) C.
 
 namespace generalize_evar {
     % we add a new constructor to terms to represent terms to be abstracted
   type abs int -> term.
 
+  pred f-on-body-raw i:(raw-clause -> raw-clause -> prop), i:body-arg, o:body-arg.
+  f-on-body-raw _ (body-prop _) _ :- coq.error "Body prop should not be in the final clause".
+  f-on-body-raw F (body-raw B) (body-raw B') :- !, F B B'.
+
   pred copy-raw-clause i:raw-clause, o:raw-clause.
-  copy-raw-clause (instance-clause A B) (instance-clause A' B') :- copy A A', std.map B copy-raw-clause B'.
+  copy-raw-clause (instance-clause A B) (instance-clause A' B') :- copy A A', 
+    std.map B (f-on-body-raw copy-raw-clause) B'.
+    % std.map B copy-raw-clause B'.
   copy-raw-clause (instance-lambda A) (instance-lambda A') :-
     pi x\ copy-raw-clause (A x) (A' x).
 
   pred fold-map-raw-clause i:raw-clause, i:A, o:raw-clause, o:A.
   fold-map-raw-clause (instance-clause A B) C (instance-clause A' B') C'' :-
     fold-map A C A' C',
-    std.fold-map B C' fold-map-raw-clause B' C''.
+    std.map B unwrap-body-raw BRaw, /* unwrap body-raw */
+    std.fold-map BRaw C' fold-map-raw-clause BRaw' C'',
+    std.map BRaw' wrap-body-raw B'. /* wrap with body-raw */
   fold-map-raw-clause (instance-lambda A) C (instance-lambda A') C' :-
     pi x\ fold-map-raw-clause (A x) C (A' x) C'.
 
@@ -87,31 +101,32 @@ precompile-term Depth T Clauses :-
   if (true)
   (debug-instance-creation (coq.say "Going to precompile T"),
   std.findall (precompile-hyp-list Depth P [instance-clause T []] _) L,
-  std.map L (x\r\ sigma Head Hyps Generalized Cl\
+  std.map L (x\r\ sigma Head Hyps Generalized Cl Hyps'\
     std.assert! (x = precompile-hyp-list _ _ [instance-clause Head []] Hyps)
                 "Error in precompile term",
-    generalize_evar.abs-evars (instance-clause Head Hyps) Generalized _,
+    std.map Hyps wrap-body-raw Hyps',
+    generalize_evar.abs-evars (instance-clause Head Hyps') Generalized _,
     raw-clause->prop Generalized r) Clauses)
-  (find-hypothesis Depth T P Clauses).
+  (true /*find-hypothesis Depth T P Clauses*/ ).
 
-pred skip_lambdas i:int, i:raw-clause, i:term, i:list raw-clause, o:list prop.
-skip_lambdas Depth (instance-lambda A) T Program R :- !, 
-  skip_lambdas Depth (A Dummy_) T Program R.
-skip_lambdas Depth (instance-clause Head Hyps) T Program R :-
-  Head = T,
-  coq.say "Unification of" Head "with" Hyps,
-  std.findall (precompile-hyp-list Depth Program Hyps _) L,
-  std.map L (x\y\ sigma Hyps Generalized\
-      x = precompile-hyp-list _ _ _ Hyps,
-      coq.say Head Hyps,
-      generalize_evar.abs-evars (instance-clause Head Hyps) Generalized _,
-      raw-clause->prop Generalized y) R
-  .
+% pred skip_lambdas i:int, i:raw-clause, i:term, i:list raw-clause, o:list prop.
+% skip_lambdas Depth (instance-lambda A) T Program R :- !, 
+%   skip_lambdas Depth (A Dummy_) T Program R.
+% skip_lambdas Depth (instance-clause Head Hyps) T Program R :-
+%   Head = T,
+%   coq.say "Unification of" Head "with" Hyps,
+%   std.findall (precompile-hyp-list Depth Program Hyps _) L,
+%   std.map L (x\y\ sigma Hyps Generalized\
+%       x = precompile-hyp-list _ _ _ Hyps,
+%       coq.say Head Hyps,
+%       generalize_evar.abs-evars (instance-clause Head Hyps) Generalized _,
+%       raw-clause->prop Generalized y) R
+%   .
 
-pred find-hypothesis i:int, i:term, i:list raw-clause, o:list prop.
-find-hypothesis Depth Head Program R :-
-  std.map-filter Program (x\r\ skip_lambdas Depth x Head Program r) R',
-  std.flatten R' R.
+% pred find-hypothesis i:int, i:term, i:list raw-clause, o:list prop.
+% find-hypothesis Depth Head Program R :-
+%   std.map-filter Program (x\r\ skip_lambdas Depth x Head Program r) R',
+%   std.flatten R' R.
 
 % [precompile-hyp-list Depth Program Hyps R]
 % - Depth is the depth of search
@@ -155,8 +170,11 @@ precompile-hyp Depth P (instance-clause Head Hyps) (instance-clause Hd Hys) Res 
     coq.say Hyps,
     coq.say "-----------------------------"
   ),
-  std.append Hys P P1,
-  precompile-hyp-list Depth P1 Hyps Res.
+  /* TODO: work with the hypotheses... */
+  std.map Hys unwrap-body-raw Hys', 
+  std.map Hyps unwrap-body-raw Hyps', 
+  std.append Hys' P P1,
+  precompile-hyp-list Depth P1 Hyps' Res.
 
 pred precompile-class.aux i:int, i:gref, i:list term, i:term, o:list prop.
 precompile-class.aux Depth ClassGR L (prod _ _ X) Clauses :- !,
@@ -183,7 +201,8 @@ term->prop T P :-
 pred raw-clause->prop i:raw-clause, o:prop.
 raw-clause->prop (instance-clause Head PremiseTerms) Clause :-
   term->prop Head Q,
-  std.map PremiseTerms raw-clause->prop Premises,
+  /* TODO: pay attention to the premiseTerms... */
+  std.map {std.map PremiseTerms unwrap-body-raw} raw-clause->prop Premises,
   if2 (Premises = []) (Clause = Q)
       (Premises = [Hd]) (Clause = (Q :- Hd))
       (Clause = (Q :- Premises)).

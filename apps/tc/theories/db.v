@@ -119,7 +119,7 @@ Elpi Db tc.db lp:{{
     type body-raw  raw-clause -> body-arg.
     type body-prop prop -> body-arg.
     
-    type instance-clause term -> list raw-clause -> raw-clause.
+    type instance-clause term -> list body-arg -> raw-clause.
     type instance-lambda (term -> raw-clause) -> raw-clause.
     % TODO: an instance-clause may contain props in the list of premises
 

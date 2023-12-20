@@ -4,7 +4,7 @@
 accumulate base.
 accumulate tc_aux.
 
-shorten precompilation.{instance-clause, instance-lambda, instances, raw-clause}.
+shorten precompilation.{instance-clause, instance-lambda, instances, raw-clause, body-prop, body-raw}.
 
 namespace precompilation {
   /*
@@ -58,7 +58,7 @@ namespace precompilation {
     std.rev RevPremises Premises,
     coq.mk-app I {std.rev ListVar} Proof,
     coq.mk-app Ty [Proof] Head,
-    Clause = (instance-clause Head Premises).
+    Clause = (instance-clause Head {std.map Premises (x\r\ r = body-raw x)}).
 
   % build a list of Clauses of type tc to be temporarly added to the 
   % database, used in theorems having assumptions.

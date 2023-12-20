@@ -33,7 +33,7 @@ Elpi Accumulate TC.Solver lp:{{
     @redflags! L => coq.reduction.cbv.norm T T'].
 
   tc-pred T T'' :-
-    cbn [] {coq.mk-app {{pred}} [T]} T',
+    cbn ["pred"] {coq.mk-app {{pred}} [T]} T',
     not (T = T'),
     tc-recursive-search T' T''.
   :after "0" msolve _ _ :- coq.say "In elpi", fail.

@@ -126,19 +126,28 @@ let solve_TC program env sigma depth unique ~best_effort filter =
       | API.Execute.Failure -> elpi_fails program
       | exception (Coq_elpi_utils.LtacFail (level, msg)) -> elpi_fails program
 
+let time_it ?(fname = "") f = 
+  let t = Unix.gettimeofday () in
+  let print_time s = 
+  debug_handle_takeover (fun () -> 
+  (* Feedback.msg_notice ( *)
+      Printf.sprintf "[%s] Time of %s is %f\n" s fname (Unix.gettimeofday () -. t) |> Pp.str
+      ) in
+  try let r = f () in print_time "success"; r
+  with e -> print_time (Printexc.to_string e ^ " fail ") ; raise e
+
 let handle_takeover coq_solver env sigma (cl: Intpart.set) =
-  let t = Unix.gettimeofday () in 
-  let is_elpi, res = 
+  let is_elpi, res, solver_name = 
     match !elpi_solver with
     | Some(omode,solver) when covered env sigma omode cl -> 
-      true, solve_TC solver
-    | _ -> false, coq_solver in
-  let is_elpi_text = if is_elpi then "Elpi" else "Coq" in
-  debug_handle_takeover (fun () ->  
+      true, solve_TC solver, solver
+    | _ -> false, coq_solver, ["coq"] in
+  (* let is_elpi_text = if is_elpi then "Elpi" else "Coq" in *)
+  (* debug_handle_takeover (fun () ->  
     let len = (Evar.Set.cardinal cl) in  Pp.str @@ 
     Printf.sprintf "handle_takeover for %s - Class : %d - Time : %f" 
-    is_elpi_text len (Unix.gettimeofday () -. t));
-  res, cl
+    is_elpi_text len (Unix.gettimeofday () -. t)); *)
+  (res, cl), solver_name
 
 let assert_same_generated_TC = Goptions.declare_bool_option_and_ref 
         ~depr:(Deprecation.make ()) ~key:["assert_same_generated_TC"] ~value:false 

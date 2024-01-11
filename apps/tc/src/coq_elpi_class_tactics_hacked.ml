@@ -1119,7 +1119,6 @@ let evar_dependencies pred evm p =
     evm ()
 
 (** [split_evars] returns groups of undefined evars according to dependencies *)
-
 let split_evars pred evm =
   let p = Intpart.create () in
   evar_dependencies pred evm p;
@@ -1171,7 +1170,8 @@ type solver_type = Environ.env -> evar_map ->
 
 (** If [do_split] is [true], we try to separate the problem in
     several components and then solve them separately *)
-let resolve_all_evars depth unique env p oevd fail =
+let resolve_all_evars depth unique env p (oevd: evar_map) fail =
+  Coq_elpi_class_tactics_takeover.time_it ~fname:"resolve_all_evars" (fun () ->
   let () =
     ppdebug 0 (fun () ->
         str"Calling typeclass resolution with flags: "++
@@ -1182,8 +1182,30 @@ let resolve_all_evars depth unique env p oevd fail =
         str"Initial evar map: " ++
         Termops.pr_evar_map ~with_univs:!Detyping.print_universes None env oevd)
   in
+  (* The set of goals to be solved is split into clusters: for any pair (A,B) of clusters,
+      the intersection between the evar in A and those in B is empty *)
   let split = split_evars p oevd in
-  let split_solver = List.map (Coq_elpi_class_tactics_takeover.handle_takeover Search.typeclasses_resolve env oevd) split in
+  let coq_solver = Search.typeclasses_resolve in
+  Coq_elpi_class_tactics_takeover.debug_handle_takeover (fun () ->
+    let sub_list_size = List.map (fun (e: Intpart.set) -> Evar.Set.cardinal e) split in 
+    let strr = List.map (Printf.sprintf " %d") sub_list_size |> List.fold_left (^) "" in
+    Pp.(str(Printf.sprintf "There are %d clusters after first split %s" (List.length split) strr)));
+  (* For each cluster, we choose if is to be solved in elpi or coq *)
+  let split_solver = List.map (Coq_elpi_class_tactics_takeover.handle_takeover coq_solver env oevd) split in
+  (* Feedback.msg_notice (Pp.str (Printf.sprintf "The list length of goals is %d" (List.length split_solver))) ; *)
+  let split_solver =
+      List.map fst split_solver in 
+      (* let coq_goals = ref [] in
+      let elpi_goals = ref [] in
+      let rec add (solver: solver_type * 'a) (solver_qualid: string list) = function 
+        | [] -> [solver, solver_qualid]
+        | ((solver', old_goals), solver_qualid') :: tl when solver_qualid' == solver_qualid -> 
+            ((solver', (Evar.Set.union (snd solver) old_goals)), solver_qualid) :: tl
+        | hd :: tl -> hd :: add solver solver_qualid tl in
+      List.iter (fun ((solver: solver_type * 'a),name) -> 
+          if name = ["coq"] then coq_goals := solver :: !coq_goals 
+          else elpi_goals := add solver name !elpi_goals) split_solver;
+      !coq_goals @ List.map fst !elpi_goals in *)
   let in_comp comp ev = Evar.Set.mem ev comp in
   let rec docomp evd = function
     | [] ->
@@ -1218,7 +1240,8 @@ let resolve_all_evars depth unique env p oevd fail =
           error_unresolvable env evd' comp
         else (* Best effort: use the best found solution on this component *)
           docomp evd' comps
-  in docomp oevd split_solver
+  in 
+  docomp oevd split_solver)
 
 let initial_select_evars filter =
   fun evd ev evi ->
@@ -1233,6 +1256,7 @@ let classes_transparent_state () =
   with Not_found -> TransparentState.empty
 
 let resolve_typeclass_evars depth unique env evd filter fail =
+  Coq_elpi_class_tactics_takeover.time_it ~fname:"resolve_typeclass_evars" (fun () ->
   let evd =
     try Evarconv.solve_unif_constraints_with_heuristics
       ~flags:(Evarconv.default_flags_of (classes_transparent_state())) env evd
@@ -1240,20 +1264,23 @@ let resolve_typeclass_evars depth unique env evd filter fail =
   in
     resolve_all_evars depth unique env
       (initial_select_evars filter) evd fail
+  )
 
-let solve_inst env evd filter unique fail =
+let solve_inst env evd filter (unique: bool) fail =
+  Coq_elpi_class_tactics_takeover.time_it ~fname:"solve_inst" (fun () ->
   let ((), sigma) = Hints.wrap_hint_warning_fun env evd begin fun evd ->
     (), resolve_typeclass_evars
     (get_typeclasses_depth ())
     unique env evd filter fail
   end in
-  sigma
+  sigma)
 
 let () =
   Typeclasses.set_solve_all_instances solve_inst
 
 let resolve_one_typeclass env ?(sigma=Evd.from_env env) concl unique =
-  let (term, sigma) = Hints.wrap_hint_warning_fun env sigma begin fun sigma ->
+  Coq_elpi_class_tactics_takeover.time_it ~fname:"resolve_one_typeclass" (fun () ->
+  (let (term, sigma) = Hints.wrap_hint_warning_fun env sigma begin fun sigma ->
   let hints = searchtable_map typeclasses_db in
   let st = Hint_db.transparent_state hints in
   let modes = Hint_db.modes hints in
@@ -1274,7 +1301,8 @@ let resolve_one_typeclass env ?(sigma=Evd.from_env env) concl unique =
   let term = match Proofview.partial_proof entry pv with [t] -> t | _ -> assert false in
   term, evd
   end in
-  (sigma, term)
+  (sigma, term))
+  )
 
 let () =
   Typeclasses.set_solve_one_instance
@@ -1328,6 +1356,8 @@ let autoapply c i =
       Proofview.Unsafe.tclEVARS sigma) end
 
 let resolve_tc c =
+  print_endline "In resolve_tc";
+  let t = Unix.gettimeofday() in
   let open Proofview.Notations in
   Proofview.tclENV >>= fun env ->
   Proofview.tclEVARMAP >>= fun sigma ->
@@ -1337,4 +1367,6 @@ let resolve_tc c =
   let filter = (fun ev _ -> Evar.Set.mem ev evars) in
   let fail = true in
   let sigma = resolve_all_evars depth unique env (initial_select_evars filter) sigma fail in
-  Proofview.Unsafe.tclEVARS sigma
+  let res = Proofview.Unsafe.tclEVARS sigma in
+  Printf.printf "Time : resolve_tc = %f\n" (t -. Unix.gettimeofday ());
+  res

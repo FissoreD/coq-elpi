@@ -57,6 +57,7 @@ tests/test_HO.v
 tests/test_eta.v
 tests/test_unfold.v
 tests/test_coercion.v
+tests/setoid.v
 
 
 examples/tutorial.v

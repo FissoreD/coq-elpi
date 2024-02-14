@@ -286,7 +286,7 @@ let set_current_program n =
   current_program := Some n
 
 let typecheck_program ?program () =
-  match !current_program with
+  match Option.append program !current_program with
   | None -> ()
   | Some program ->
       let elpi = P.ensure_initialized () in
@@ -567,10 +567,7 @@ module Interp = struct
         match syndata with
         | None -> [], fun ~target:_ ~depth -> Stdlib.Result.Ok ET.mkDiscard
         | Some (relocate_term,log) -> log, relocate_term in
-      let initial_synterp_state =
-        match synterplog with
-        | [] -> Vernacstate.Synterp.freeze ()
-        | x :: _ -> Coq_elpi_builtins_synterp.SynterpAction.synterp_state_after x in
+      let initial_synterp_state = Vernacstate.Synterp.freeze () in
       let query ~depth state =
         let state, args, gls = EU.map_acc
           (Coq_elpi_arg_HOAS.in_elpi_cmd ~depth ~raw:raw_args Coq_elpi_HOAS.(mk_coq_context ~options:(default_options ()) state))

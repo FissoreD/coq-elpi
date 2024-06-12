@@ -1,5 +1,32 @@
 # Changelog
 
+## [2.1.1] - 15/05/2024
+
+Requires Elpi 1.18.2 and Coq 8.19.
+
+### Commands
+- Fix initial synterp state of commands with a synterp phase
+
+## [2.1.0] - 29/03/2024
+
+Requires Elpi 1.18.2 and Coq 8.19.
+
+### Commands
+- New `Elpi Accumulate dbname File filename` allows to accumulate a file int a db
+- Change `Elpi Db` now only creates (and initialises) a database for the specified phase
+
+### API
+- New `coq.parse-attributes` support for the `attlabel` specification,
+  see `coq-lib-common.elpi` for its documentation.
+- New `coq.goal->pp`
+- Replace `coq.replay-all-missing-synterp-actions` by (nestable) groups of actions
+- New `coq.begin-synterp-group` and `coq.end-synterp-group` primitives
+- New `coq.replay-synterp-action-group` primitive (replaces `coq.replay-all-missing-synterp-actions` in conjunction with a group)
+- New `coq.replay-next-synterp-actions` to replay all synterp actions until the next beginning/end of a synterp group
+- New `coq.primitive.projection-unfolded` to fold/unfold a primitive projection.
+  Note that unfolded primitive projections are still compact terms, but they
+  are displayed as `match` expressions and some Ltac code can see that.
+
 ## [2.0.2] - 01/02/2024
 
 Requires Elpi 1.18.2 and Coq 8.19.

@@ -146,11 +146,16 @@ module Solver = struct
     | Only whitelist ->
       Evar.Set.for_all (fun x -> covered1 env sigma whitelist x true) s
 
+  let created = ref false
 
   let action_manager (qname, x) =
     let name = qname2str qname in
     match x with
-    | Create -> Class_tactics.register_solver ~name (solve_TC qname, covered (fun () -> CSMap.get name !Modes.omodes));
+    | Create -> 
+        if not !created then begin
+          Class_tactics.register_solver ~name (solve_TC qname, covered (fun () -> CSMap.get name !Modes.omodes)); 
+          created := true
+        end
     | Activate -> Class_tactics.activate_solver ~name
     | Deactivate -> Class_tactics.deactivate_solver ~name
     

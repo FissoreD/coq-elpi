@@ -35,7 +35,9 @@ let elpi_cs_hook program env sigma ((proji, u), params1, c1) (t2, args2) =
 			let gls = Evar.Set.singleton goal_evar in
 			let sigma, _, _ = Rocq_elpi_HOAS.solution2evd ~eta_contract_solution:false sigma solution gls in
 			if Evd.is_defined sigma goal_evar then
-           let constant = EConstr.to_constr sigma goal in
+				let () = Evarconv.debug_unification (fun () -> Pp.(v 0 (str "elpi cs succeeds with solution: " ++ Termops.Internal.print_constr_env env sigma goal ++ cut ()))) in
+        let constant = EConstr.to_constr ~abort_on_undefined_evars:false sigma goal in
+				let () = Evarconv.debug_unification (fun () -> Pp.(v 0 (str "elpi cs found solution: " ++ Termops.Internal.print_constr_env env sigma (EConstr.of_constr constant) ++ cut ()))) in
 			  let args_goal, t = Reduction.whd_decompose_lambda env constant in
 			  let args_type = List.rev_map Context.Rel.Declaration.get_type args_goal in
 			  let args_type = List.map EConstr.of_constr args_type in
@@ -54,9 +56,15 @@ let elpi_cs_hook program env sigma ((proji, u), params1, c1) (t2, args2) =
 				 params = List.map EConstr.of_constr params;
 				 cvalue_abstraction = None;
 				 cvalue_arguments = Array.to_list sk1})
-			else None
-		 | API.Execute.NoMoreSteps
-		 | API.Execute.Failure -> None
+			else
+				let () = Evarconv.debug_unification (fun () -> Pp.(v 0 (str "elpi cs succeeds without solution" ++ cut ()))) in
+				None
+		 | API.Execute.NoMoreSteps ->
+			let () = Evarconv.debug_unification (fun () -> Pp.(v 0 (str "elpi cs no more steps" ++ cut ()))) in
+			None
+		 | API.Execute.Failure ->
+			let () = Evarconv.debug_unification (fun () -> Pp.(v 0 (str "elpi cs failed" ++ cut ()))) in
+			None
 		 end
 
 [%%if coq = "8.20"]

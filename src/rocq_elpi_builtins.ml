@@ -3347,7 +3347,11 @@ Universe constraints are put in the constraint store.|})))),
        let sigma, ty = Typing.type_of proof_context.env sigma t in
        let sigma, r = match ety with
        | Data ety ->
-           let sigma = Evarconv.unify proof_context.env sigma ~with_ho:true Conversion.CUMUL ty ety in
+           let flags = Evarconv.default_flags_of TransparentState.full in
+           let flags = {flags with with_cs = false} in
+           let sigma =
+             try Evarconv.unify ~flags proof_context.env sigma ~with_ho:true Conversion.CUMUL ty ety
+             with _ -> Evarconv.unify proof_context.env sigma ~with_ho:true Conversion.CUMUL ty ety in
            sigma, ?: None +! B.mkOK
        | NoData ->
            let flags = Evarconv.default_flags_of TransparentState.full in
@@ -3547,6 +3551,19 @@ Supported attributes:
   DocAbove);
 
   LPDoc "-- Coq's reduction machines ------------------------------------";
+
+  MLCode(Pred("coq.reduction.whd-betaiota-deltazeta-for-iota-state",
+    CIn(term,"T",
+    COut(term,"Tred",
+    Read(proof_context, {|Puts T in weak head beta-iota-normal form, beta-iota-delta-zeta reducing match arguments.
+Supported attributes:
+- @redflags! (default coq.redflags.all)|}))),
+    (fun t _ ~depth proof_context constraints state ->
+       let sigma = get_sigma state in
+       let flags = Option.default RedFlags.all proof_context.options.redflags in
+       let t = Reductionops.Stack.zip sigma (Reductionops.whd_betaiota_deltazeta_for_iota_state TransparentState.full proof_context.env sigma (t, Reductionops.Stack.empty)) in
+       !: t)),
+  DocAbove);
 
   MLCode(Pred("coq.reduction.lazy.whd",
     CIn(term,"T",

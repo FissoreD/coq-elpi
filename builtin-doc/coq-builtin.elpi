@@ -1518,6 +1518,14 @@ external func coq.redflags.sub coq.redflags,
 
 % -- Coq's reduction machines ------------------------------------
 
+% [coq.reduction.whd-betaiota-deltazeta-for-iota-state T Tred] Puts T in
+% weak head beta-iota-normal form, beta-iota-delta-zeta reducing match
+% arguments.
+% Supported attributes:
+% - @redflags! (default coq.redflags.all)
+external pred coq.reduction.whd-betaiota-deltazeta-for-iota-state i:term, 
+                                                                  o:term.
+
 % [coq.reduction.lazy.whd T Tred] Puts T in weak head normal form.
 % Supported attributes:
 % - @redflags! (default coq.redflags.all)

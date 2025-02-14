@@ -110,7 +110,7 @@ copy (let N T B F) (let N T1 B1 F1) :- !,
   copy T T1, copy B B1, pi x\ copy (F x) (F1 x).
 copy (prod N T F) (prod N T1 F1) :- !,
   copy T T1, (pi x\ copy (F x) (F1 x)).
-copy (app L) (app L1) :- !, map L copy L1.
+copy (app L) (app L1) :- !, coq.say "copy app", map L copy L1.
 copy (fix N Rno Ty F) (fix N Rno Ty1 F1) :- !,
   copy Ty Ty1, pi x\ copy (F x) (F1 x).
 copy (match T Rty B) (match T1 Rty1 B1) :- !,

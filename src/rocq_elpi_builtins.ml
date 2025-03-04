@@ -4127,6 +4127,13 @@ coq.id->name S N :- coq.string->name S N.
   (fun gr _ ~depth h c state -> !: (gr2path gr))),
   DocAbove);
 
+  MLCode(Pred("coq.projection->gref",
+    In(projection, "Proj",
+    Out(gref, "GR",
+    Read(unit_ctx, "extract the name of the compatibility constant associated to Proj"))),
+  (fun p _ ~depth h c state -> !: (GlobRef.ConstRef (Projection.constant p)))),
+  DocAbove);
+
   Rocq_elpi_builtins_synterp.modpath_to_path;
   Rocq_elpi_builtins_synterp.modtypath_to_path;
   Rocq_elpi_builtins_synterp.modpath_to_library;

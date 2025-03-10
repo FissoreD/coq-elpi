@@ -105,6 +105,7 @@ namespace tc {
       precompile-aux _ (global _ as C) A C A :- !.
       precompile-aux _ (pglobal _ _ as C) A C A :- !.
       precompile-aux _ (sort _ as C) A C A :- !.
+      precompile-aux _ (primitive (proj _ _) as C) A C A :- !.
 
       % Detect maybe-eta term
       % TODO: should I precompile also the type of the fun and put it in the output term

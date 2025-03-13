@@ -2,12 +2,28 @@
 /* ------------------------------------------------------------------------- */
 
 namespace tc {
-  pred build-query-from-goal i:term, i:term, o:prop, o:list prop.
-  build-query-from-goal Goal Proof Q PostProcess :-
-    tc.compile.goal Goal Goal' PostProcess, !,
-    coq.safe-dest-app Goal' (global TC) TL',
-    std.append TL' [Proof] TL, !,
-    coq.elpi.predicate {tc.gref->pred-name TC} TL Q.
+	pred search-loop i:bool i:string, i:list term, i:term, o:term.
+	search-loop NoSubject TC Params Subject Proof :-
+		if (NoSubject = tt) (std.append Params [Proof] TL) (std.append Params [Subject, Proof] TL),
+    coq.elpi.predicate TC TL Q,
+		Q; (
+		NoSubject = ff, !,
+		not (var Subject),
+		coq.reduction.whd-betaiota-deltazeta-for-iota-state Subject X,
+		coq.safe-dest-app X (global (const Hd)) Ag,
+		not (var Hd),
+		coq.env.const-body Hd (some Hd'),
+		coq.mk-app Hd' Ag X',
+		(coq.reduction.whd-betaiota-deltazeta-for-iota-state X' X''),
+		search-loop NoSubject TC Params X'' Proof).
+
+  pred build-query-from-goal i:term, o:bool, o:string, o:list term, o:term, o:list prop.
+  build-query-from-goal Goal NoSubject TC Params Subject PostProcess :- std.do! [
+    tc.compile.goal Goal Goal' PostProcess,
+    coq.safe-dest-app Goal' (global TC') TL',
+		tc.gref->pred-name TC' TC,
+		((std.rev TL' [Subject|RevTL], std.rev RevTL Params, NoSubject = ff); (Params = TL', NoSubject = tt)),
+		].
 
   type tc.mode_fail term.
 
@@ -24,10 +40,10 @@ namespace tc {
 
   pred solve-under-context i:term, o:term.
   solve-under-context Ty Proof :-
-    tc.time-it tc.oTC-time-compile-goal (build-query-from-goal Ty Proof Q PostProcess) "build query", !,
-    if-true print-compiled-goal (coq.say "[TC] the compiled goal is" Q), !,
+    tc.time-it tc.oTC-time-compile-goal (build-query-from-goal Ty NoSubject TC Params Subject PostProcess) "build query", !,
+    if-true print-compiled-goal (coq.say "[TC] the compiled goal is" {coq.elpi.predicate TC {std.append Params [Subject, Proof]} }), !,
     tc.time-it tc.oTC-time-instance-search (
-      do PostProcess, Q,
+      do PostProcess, search-loop NoSubject TC Params Subject Proof,
       tc.link.solve-eta, % Trigger eta links
       tc.link.solve-llam, % Trigger llam links
       tc.link.solve-unif-eq

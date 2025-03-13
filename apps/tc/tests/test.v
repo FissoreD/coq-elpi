@@ -290,15 +290,7 @@ Module HO_scope_check1.
     apply _.
   Qed.
 
-  Elpi Query TC.Solver lp:{{
-    sigma X Q\ % To avoid printing in console
-      tc.build-query-from-goal {{c1 (fun x => f x lp:X)}} _ Q _,
-      (pi A L T\ 
-        tc.link.eta.scope-check (uvar _ L) (fun _ _ (x\ app [{{g}}|_] as T)) :- !, 
-          std.assert! (not (prune A L, A = T)) "[TC] Should fail by Scope Check", 
-          fail) =>
-      not Q.
-  }}.
+
 
   (* Here fail on scope check *)
   Goal exists X, c1 (fun x => f x X).

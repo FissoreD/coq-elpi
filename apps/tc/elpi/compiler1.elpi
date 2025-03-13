@@ -34,8 +34,8 @@ namespace tc {
 			std.append Params [X, y] Args',
 			coq.elpi.predicate PredName Args' C',
 			Clause x y X = (C :- sigma Hd Ag Hd' X'\
+				not (var x),
 				coq.safe-dest-app x (global (const Hd)) Ag,
-				% Why does const-body explode instead of simply failing?
 				not (var Hd),
 				coq.env.const-body Hd (some Hd'),
 				coq.mk-app Hd' Ag X',
@@ -80,7 +80,7 @@ namespace tc {
 
   pred add-inst i:gref, i:gref, i:string, i:int.
   add-inst Inst TC LocalityStr Prio :-
-		(unfolding-clause Inst; true),
+		%(unfolding-clause Inst; true),
     get-locality LocalityStr Locality,
     if (Prio = -1) (tc.get-inst-prio Inst Prio1) (Prio1 = Prio),
     Grafting is after (int_to_string Prio1),

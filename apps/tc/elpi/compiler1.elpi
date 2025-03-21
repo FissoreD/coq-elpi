@@ -21,11 +21,11 @@ namespace tc {
   get-locality "Global" [@global!].
   get-locality "Export" [].
 
-	pred unfolding-clause.mk i:string, i:int, i:list term, o:prop.
-	unfolding-clause.mk PredName 0 Params' (pi x y X\ Clause x y X) :- std.do! [
+	pred unfolding-clause.mk i:string, i:int, i:list term, o:prop, o:prop.
+	unfolding-clause.mk PredName 0 Params' (pi x y X\ Clause x y X) (pi x y\ ClauseVar x y) :- std.do! [
 		std.rev Params' Params,
 		pi x y X\ sigma Args Args' C C'\ std.do! [
-			% Hack: We check that the no clause exists.
+			% Hack: We check that no clause exists.
 			std.append Params [_, _] ArgsH,
 			coq.elpi.predicate PredName ArgsH CH,
 			not CH,
@@ -33,19 +33,26 @@ namespace tc {
 			coq.elpi.predicate PredName Args C,
 			std.append Params [X, y] Args',
 			coq.elpi.predicate PredName Args' C',
-			Clause x y X = (C :- sigma Hd Ag Hd' X'\
-				not (var x),
-				coq.safe-dest-app x (global (const Hd)) Ag,
-				not (var Hd),
-				coq.env.const-body Hd (some Hd'),
-				coq.mk-app Hd' Ag X',
-				(coq.reduction.whd-betaiota-deltazeta-for-iota-state X' X),
-				not (x = X),
-				C') ] ].
-	unfolding-clause.mk PredName N Params (pi x\ C x) :-
+			Clause x y X = (C :- sigma Hd Hdgref Ag Hd' Xwhd P PU N X'\ !,
+				(not (var x),
+				(coq.reduction.whd-betaiota-deltazeta-for-iota-state x Xwhd),
+				if (x = Xwhd)
+					(coq.safe-dest-app x Hd Ag,
+					not (var Hd),
+					if (Hd = global (const Hdgref)) (coq.env.const-body Hdgref (some Hd'))
+						(Hd = primitive (proj P N),
+						coq.primitive.projection-unfolded P PU,
+						Hd' = primitive (proj PU N)),
+					coq.mk-app Hd' Ag X',
+					coq.reduction.whd-betaiota-deltazeta-for-iota-state X' X,
+					not (x = X))
+				(X = Xwhd),
+				C')),
+			ClauseVar x y = (C :- var x, !, fail) ] ].
+	unfolding-clause.mk PredName N Params (pi x\ C x) (pi x\ CVar x) :-
 		0 < N,
 		calc (N - 1) N',
-		pi x\ unfolding-clause.mk PredName N' [x|Params] (C x).
+		pi x\ unfolding-clause.mk PredName N' [x|Params] (C x) (CVar x).
 
 	pred unfolding-clause.get-class i:term, o:int, o:gref.
 	unfolding-clause.get-class (prod _ _ (x\ Ty x)) N Name :-
@@ -62,9 +69,12 @@ namespace tc {
 		0 < NParams,
 		tc.gref->pred-name ClassGR PredName,
 		calc (NParams - 1) NParams',
-		unfolding-clause.mk PredName NParams' [] Clause,
+		unfolding-clause.mk PredName NParams' [] Clause ClauseVar,
 		calc (int_to_string 100) S,
-		tc.add-tc-db _ (after S) Clause].
+		calc (int_to_string 0) S0,
+		tc.add-tc-db _ (after S) Clause,
+		tc.add-tc-db _ (before S0) ClauseVar,
+		].
 
   pred add-inst.aux i:gref, i:gref i:list prop, i:grafting.
   add-inst.aux Inst TC Locality Grafting :-
@@ -80,7 +90,7 @@ namespace tc {
 
   pred add-inst i:gref, i:gref, i:string, i:int.
   add-inst Inst TC LocalityStr Prio :-
-		%(unfolding-clause Inst; true),
+		(unfolding-clause Inst; true),
     get-locality LocalityStr Locality,
     if (Prio = -1) (tc.get-inst-prio Inst Prio1) (Prio1 = Prio),
     Grafting is after (int_to_string Prio1),

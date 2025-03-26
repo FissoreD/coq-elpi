@@ -926,7 +926,7 @@ let add_axiom_or_variable api id ty local_bkind options state =
     | None -> begin
       Dumpglob.dump_definition name false "ax";
       comAssumption_declare_axiom Vernacexpr.NoCoercion ~local:Locality.ImportDefaultBehavior ~kind (EConstr.to_constr sigma ty)
-        ~univs ~impargs ~inline:options.inline ~name
+        ~univs ~impargs ~inline:options.inline ~name:id
       end
   in
   let ucsts = match univs with UState.Monomorphic_entry x, _ -> x | _ -> Univ.ContextSet.empty in
@@ -3065,6 +3065,23 @@ NParams can always be omitted, since it is inferred.
       !: coercions
     with Not_found -> !: [])),
   DocAbove);
+
+  MLCode(Pred("coq.equivalent-keys.add",
+    CIn(term, "K1",
+    In(int, "I1",
+    CIn(term, "K2",
+    In(int, "I2",
+    Full(proof_context, {|Declares K1 and K2 as equivalent keys with I1 and I2 arguments respectively.
+    Supported attributes:|}))))),
+      (fun k1 i1 k2 i2 ~depth { env } _ state ->
+        let sigma = get_sigma state in
+        let constr_key t = Option.get (Keys.constr_key env (EConstr.kind sigma) t) in
+        let () = try
+            Keys.declare_equiv_keys (constr_key k1) i1 (constr_key k2) i2
+          with _ -> raise No_clause in
+        state, (), [])),
+  DocAbove);
+
 
   LPCode {|% Deprecated, use coq.env.projections
 pred coq.CS.canonical-projections i:inductive, o:list (option constant).

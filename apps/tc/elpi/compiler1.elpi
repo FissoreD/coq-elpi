@@ -34,8 +34,8 @@ namespace tc {
 			std.append Params [X, y] Args',
 			coq.elpi.predicate PredName Args' C',
 			Clause x y X = (C :- sigma Hd Hdgref Ag Hd' Xwhd P PU N X'\ !,
-				(not (var x),
-				(coq.reduction.whd-betaiota-deltazeta-for-iota-state x Xwhd),
+				not (var x),
+				coq.reduction.whd-betaiota-deltazeta-for-iota-state x Xwhd,
 				if (x = Xwhd)
 					(coq.safe-dest-app x Hd Ag,
 					not (var Hd),
@@ -47,7 +47,7 @@ namespace tc {
 					coq.reduction.whd-betaiota-deltazeta-for-iota-state X' X,
 					not (x = X))
 				(X = Xwhd),
-				C')),
+				C'),
 			ClauseVar x y = (C :- var x, !, fail) ] ].
 	unfolding-clause.mk PredName N Params (pi x\ C x) (pi x\ CVar x) :-
 		0 < N,

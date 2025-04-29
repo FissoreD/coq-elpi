@@ -21,8 +21,8 @@ namespace tc {
   get-locality "Global" [@global!].
   get-locality "Export" [].
 
-	pred unfolding-clause.mk i:string, i:int, i:list term, o:prop, o:prop.
-	unfolding-clause.mk PredName 0 Params' (pi x y X\ Clause x y X) (pi x y\ ClauseVar x y) :- std.do! [
+	pred unfolding-clause.mk i:string, i:int, i:list term, o:prop.
+	unfolding-clause.mk PredName 0 Params' (pi x y X\ Clause x y X) :- std.do! [
 		std.rev Params' Params,
 		pi x y X\ sigma Args Args' C C'\ std.do! [
 			% Hack: We check that no clause exists.
@@ -47,12 +47,11 @@ namespace tc {
 					coq.reduction.whd-betaiota-deltazeta-for-iota-state X' X,
 					not (x = X))
 				(X = Xwhd),
-				C'),
-			ClauseVar x y = (C :- var x, !, fail) ] ].
-	unfolding-clause.mk PredName N Params (pi x\ C x) (pi x\ CVar x) :-
+				C') ] ].
+	unfolding-clause.mk PredName N Params (pi x\ C x) :-
 		0 < N,
 		calc (N - 1) N',
-		pi x\ unfolding-clause.mk PredName N' [x|Params] (C x) (CVar x).
+		pi x\ unfolding-clause.mk PredName N' [x|Params] (C x).
 
 	pred unfolding-clause.get-class i:term, o:int, o:gref.
 	unfolding-clause.get-class (prod _ _ (x\ Ty x)) N Name :-
@@ -69,11 +68,9 @@ namespace tc {
 		0 < NParams,
 		tc.gref->pred-name ClassGR PredName,
 		calc (NParams - 1) NParams',
-		unfolding-clause.mk PredName NParams' [] Clause ClauseVar,
+		unfolding-clause.mk PredName NParams' [] Clause,
 		calc (int_to_string 100) S,
-		calc (int_to_string 0) S0,
 		tc.add-tc-db _ (after S) Clause,
-		tc.add-tc-db _ (before S0) ClauseVar,
 		].
 
   pred add-inst.aux i:gref, i:gref i:list prop, i:grafting.

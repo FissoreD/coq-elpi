@@ -73,6 +73,39 @@ namespace tc {
       min-max-nat (r-ar A B) (r-ar A' B') (r-ar A'' B'') :- !,
         min-nat A A' A'', max-nat B B' B''.
 
+      func add-arity nat, list nat -> list nat.
+      add-arity z     []     [z].
+      add-arity z     [X|Xs] [s X| Xs].
+      add-arity (s N) []     [z|Ys] :- add-arity N [] Ys.
+      add-arity (s N) [X|Xs] [X|Ys] :- add-arity N Xs Ys.
+
+      % takes a eigen-variable V, a term T, and an accumulator (initialized at [])
+      % returns a list L of length N where N is the maximal application of V in T.
+      % For each position i in L, L[i] represents the number of time V appears in
+      % T applied at arity i 
+      func variable-usage term, term, list nat -> list nat.
+      variable-usage N N              L L' :- !, add-arity z L L'.
+      variable-usage _ N              L L  :- name N, !.
+      variable-usage N (app [N|Args]) L L'' :- !,
+        length-nat Args Len,
+        add-arity Len L L',
+        std.fold Args L' (variable-usage N) L''.
+      % TODO: may have the term ((λx.N x) _), i.e. N, may appear in the head of T
+      variable-usage N (app [_|Args]) L L' :- !,
+        std.fold Args L (variable-usage N) L'.
+      variable-usage N (fun _ Ty B) L L'' :- !,
+        variable-usage N Ty L L',
+        pi x\ variable-usage N (B x) L' L''.
+      variable-usage N (prod _ Ty B) L L'' :- !,
+        variable-usage N Ty L L',
+        pi x\ variable-usage N (B x) L' L''.
+      variable-usage _ (global _)    L L :- !.
+      variable-usage _ uvar          L L :- !.
+      variable-usage _ (sort _)      L L :- !.
+      variable-usage _ (pglobal _ _) L L :- !.
+      variable-usage A B _ _ :- coq.error "Count maximal arity failure" A B.
+
+
       % TODO: this is incomplete: it lacks of some term constructors
       :index (_ 1)
       func get-range-arity-aux term, term -> range-arity.
@@ -110,7 +143,7 @@ namespace tc {
 
       % Detect maybe-eta term
       % TODO: should I precompile also the type of the fun and put it in the output term
-      precompile-aux _ (fun Name Ty B as T) N (tc.maybe-eta-tm (fun Name Ty B') Scope) (s M) :-
+      precompile-aux _ (fun Name Ty B as T) N (tc.maybe-eta-tm (fun Name Ty B') Scope) (s M) :- fail,
         maybe-eta T, !,
         free-var Scope,
         precompile-aux is_neg_fix Ty N _ N',
@@ -124,8 +157,11 @@ namespace tc {
 
       % Charge if we work with unification variable or local name
       % And returns the subterms is a prod-range
-      precompile-aux IsP (prod Name Ty B) N (tc.prod-range (prod Name Ty' B') MaxAr) P :- !,
+      precompile-aux IsP (prod Name Ty B) N (tc.prod-range (prod Name Ty' B') MaxAr ArL) P :- !,
         std.assert! (pi x\ get-range-arity x Ty (B x) MaxAr) "[TC] get-range-arity should not fail",
+        coq.say "Range arity is" MaxAr, 
+        (pi x\ variable-usage x (B x) [] ArL),
+        coq.say "Variable usage of" Name "is" ArL,
         if (IsP = is_pos) (C = x\ is-uvar x) (C = x\ is-name x),
         std.assert! (pi x\ C x => precompile-aux IsP (B x) N (B' x) M) "[TC] should not fail",
         precompile-aux {neg IsP} Ty M Ty' P.
@@ -230,22 +266,27 @@ namespace tc {
       precompile-aux (sort _ as C) A C A :- !.
 
       % Detect maybe-eta term
-      precompile-aux (fun Name Ty B as T) N (tc.maybe-eta-tm (fun Name Ty' B') Scope) M :-
+      precompile-aux (fun Name Ty B as T) N (tc.maybe-eta-tm (fun Name Ty' B') Scope) M :- fail,
         maybe-eta T, !,
         names Scope,
         (pi x\ precompile-aux (B x) N (B' x) M'),
         precompile-aux Ty M' Ty' M.
 
       % Detect maybe-beta term
-      precompile-aux (app [X|XS]) N (tc.maybe-llam-tm (app [app[X | PF] | NPF1]) Scope1) [X|M] :-
+      precompile-aux (app [X|XS]) N (tc.maybe-llam-tm (app [app[X | PF] | NPF1]) Scope1) [X|M] :- fail,
         var X _ Scope, split-pf XS Scope PF NPF, 
         not (NPF = []), !, % else XS is a list of distinct names, i.e. `app [X|XS]` is in PF
         names Scope1,
         std.fold-map NPF N precompile-aux NPF1 M. 
 
+      func count-prodL term -> list nat.
+      count-prodL (prod _ _ B) [z|Zs] :- !, pi x\ count-prodL (B x) Zs.
+      count-prodL _ [].
+
       % In the goal there are 
-      precompile-aux (prod Name Ty B) N (tc.prod-range (prod Name Ty' B') (r-ar z MaxAr)) P :- !,
+      precompile-aux (prod Name Ty B) N (tc.prod-range (prod Name Ty' B') (r-ar z MaxAr) ArL) P :- !,
         count-prod Ty MaxAr,
+        count-prodL Ty ArL,
         std.assert! (pi x\ precompile-aux (B x) N (B' x) M) "[TC] should not fail",
         precompile-aux Ty M Ty' P.
 

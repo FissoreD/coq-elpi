@@ -188,6 +188,7 @@ namespace tc {
   type prod-range 
     term ->          % The current qunatified uvar 
     range-arity ->   % Its minimum and maximal application
+    list nat ->
     term.
 
   type maybe-eta-tm 

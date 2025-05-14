@@ -14,40 +14,54 @@ namespace tc {
 
       namespace decompile {
 
-        func decompile-term-aux term, pair (list term) (list prop) -> term, pair (list term) (list prop).
+        func is-instance-tm term ->.
+        is-instance-tm T :-
+          name T,
+          decl T _ Ty,
+          coq.say "Ty is" Ty, 
+          % std.spy(coq.typecheck T Ty ok), !,
+          tc.is-instance-term Ty.
 
-        decompile-term-aux X A Y A :- name X, !, X = Y, !. % avoid loading "decompile-term-aux x A x A" at binders
+        typeabbrev var-lookup (list (pair term (list term))).
+        func var-lookup-get term, var-lookup -> term, var-lookup.
+        var-lookup-get T L T' [pr T Xs | L] :- std.lookup! L T [T'|Xs], !.
+        var-lookup-get T L T L :- !.
+
+        func decompile-term-aux term, triple var-lookup (list term) (list prop) -> term, triple var-lookup (list term) (list prop).
+
+        decompile-term-aux X A Y A :- name X, is-instance-tm X, !, X = Y, !. % avoid loading "decompile-term-aux x A x A" at binders
+        decompile-term-aux X (triple A B C) Y (triple A' B C) :- name X, !, var-lookup-get X A Y A', !. % avoid loading "decompile-term-aux x A x A" at binders
         decompile-term-aux (global _ as C) A C A :- !.
         decompile-term-aux (pglobal _ _ as T) L T' L :- !, copy T T', !.
         decompile-term-aux (sort _ as T) L T' L :- !, copy T T', !.
         decompile-term-aux (uvar as X) L X L :- !.
         decompile-term-aux (primitive _ as P) L P L :- !.
 
-        decompile-term-aux (tc.maybe-eta-tm T S) (pr [X|XS] L1) Y (pr XS' [NL | L2]) :- !,
+        decompile-term-aux (tc.maybe-eta-tm T S) (triple A [X|XS] L1) Y (triple A' XS' [NL | L2]) :- !, coq.error "NOT HERE",
           name Y X S,
-          decompile-term-aux T (pr XS L1) T' (pr XS' L2), 
+          decompile-term-aux T (triple A XS L1) T' (triple A' XS' L2), 
           NL = tc.link.eta Y T'.
 
-        decompile-term-aux (tc.prod-range T _) A T' A' :- !,
+        decompile-term-aux (tc.prod-range T _ _) A T' A' :- !,
           decompile-term-aux T A T' A'.
 
         % Maybe-llam when H is a coq unif variable quantified in the instance type
         % In the following instance, X is a HO variable applied to a constant (not a name)
         %   Instance i : forall (X : T1 -> T2) (a : T1), c (X a). 
-        decompile-term-aux (tc.maybe-llam-tm (app[app[H | PF] | NPF]) S) (pr [X|XS] L1) Y (pr XS' [NL | L2]) :-
+        decompile-term-aux (tc.maybe-llam-tm (app[app[H | PF] | NPF]) S) (triple A [X|XS] L1) Y (triple A' XS' [NL | L2]) :- coq.error "NOT HERE",
           not (var H), !, % is-uvar H, holds
           name Y X S,
           length-nat PF Len,
           std.assert!(name-pair H V Len) "[TC] fail to find name-pair",
           name Hd V PF,
-          std.fold-map NPF (pr XS L1) decompile-term-aux Tl (pr XS' L2), 
+          std.fold-map NPF (triple A XS L1) decompile-term-aux Tl (triple A' XS' L2), 
           NL = tc.link.llam Y (app [Hd|Tl]).
 
         % Maybe-llam when H is a hole appearing in the shelved goals
         % This happens when the instance to be compiled comes from the context
         % Example: Goal exists (X : T1 -> T2), forall a, c (X a) -> ...
         %            intros; eexists. (* In the context we have the instance `H: c (?X a)` *)
-        decompile-term-aux (tc.maybe-llam-tm (app[app[H | PF] | NPF]) S) A Z (pr XS' [NL | L3]) :-  !,
+        decompile-term-aux (tc.maybe-llam-tm (app[app[H | PF] | NPF]) S) A Z (triple A' XS' [NL | L3]) :-  fail, !,
           var H _ Scope, !,
           std.append Scope S S',
           prune Z S',
@@ -56,36 +70,37 @@ namespace tc {
           (Pairs =>
             (tc.compile.goal.build-eta-links-of-vars [T] P,
               tc.compile.goal.get-uva-pair-arity T PF Y)),
-          std.fold-map NPF A decompile-term-aux Tl (pr XS' L2), 
+          std.fold-map NPF A decompile-term-aux Tl (triple A' XS' L2), 
           std.append P L2 L3,
           NL = tc.link.llam Z (app [Y|Tl]).
 
-        decompile-term-aux (fun Name Ty Bo) (pr XS L) (fun Name Ty' Bo') (pr XS2 L3) :- !,
-          (pi x\ is-name x => decompile-term-aux (Bo x) (pr XS []) (Bo' x) (pr XS1 (L1x x))),
+        decompile-term-aux (fun Name Ty Bo) (triple V XS L) (fun Name Ty' Bo') (triple V2 XS2 L3) :- !,
+          (pi x\ is-name x => decompile-term-aux (Bo x) (triple V XS []) (Bo' x) (triple V1 XS1 (L1x x))),
           close-term-no-prune-ty L1x Ty L1,
-          decompile-term-aux Ty (pr XS1 L) Ty' (pr XS2 L2),
+          decompile-term-aux Ty (triple V1 XS1 L) Ty' (triple V2 XS2 L2),
           std.append L1 L2 L3.
 
-        decompile-term-aux (prod Name Ty Bo) (pr XS L) (prod Name Ty' Bo') (pr XS2 L3) :- !,
-          (pi x\ is-name x => decompile-term-aux (Bo x) (pr XS []) (Bo' x) (pr XS1 (L1x x))),
+        decompile-term-aux (prod Name Ty Bo) (triple V XS L) (prod Name Ty' Bo') (triple V2 XS2 L3) :- !,
+          (pi x\ is-name x => decompile-term-aux (Bo x) (triple V XS []) (Bo' x) (triple V1 XS1 (L1x x))),
           close-term-no-prune-ty L1x Ty L1,
-          decompile-term-aux Ty (pr XS1 L) Ty' (pr XS2 L2),
+          decompile-term-aux Ty (triple V1 XS1 L) Ty' (triple V2 XS2 L2),
           std.append L1 L2 L3.
 
         % HO var when H is a quantified variable in the instance type being in PF
         % Example: Instance i: forall (X : T1 -> T2), (forall a, c1 (X a)) -> c2.
         %   Note: X is the HO var taken into account which is applied to the list of 
         %         distinct_names [a]
-        decompile-term-aux (app [H|L]) N R N :-
+        decompile-term-aux (app [H|L]) (triple N1 B C) R (triple N2 B C) :- fail,
           is-uvar H,
           std.forall L is-name,     % Not needed, since precompile does this check
           distinct_names L, !,      % Not needed, since precompile does this check
           length-nat L Len,
-          std.assert! (name-pair H V Len) "[TC] name-pair not found",
+          % TODO: use length to get the right variable by length....
+          std.assert! (var-lookup-get H N1 V N2) "[TC] name-pair not found",
           name R V L.
 
         % HO var when H is a hole appearing in the shelved goals
-        decompile-term-aux (app [T|L]) (pr A B) Z (pr A B') :-
+        decompile-term-aux (app [T|L]) (triple V A B) Z (triple V A B') :- fail,
           var T _ Scope,
           std.forall L is-name,     % Not needed, since decompile for llam leaves only PF
           distinct_names L, !,      % Not needed, since decompile for llam leaves only PF
@@ -105,9 +120,9 @@ namespace tc {
         decompile-term-aux A B _ _ :- coq.error "[TC] cannot decompile-term-aux of" A B.
         
         :functional
-        pred decompile-term i:list term, o:list term, i:term, o:term, o:list prop.
-        decompile-term L L' T R Links :-
-          decompile-term-aux T (pr L []) R (pr L' Links).
+        pred decompile-term i:var-lookup, i:list term, o:list term, i:term, o:var-lookup, o:term, o:list prop.
+        decompile-term V L L' T V' R Links :-
+          decompile-term-aux T (triple V L []) R (triple V' L' Links).
 
       }
 
@@ -115,7 +130,7 @@ namespace tc {
       func clean-term term -> term.
       clean-term A B :-
         (pi t s r \ copy (tc.maybe-eta-tm  t s) r :- !, copy t r, !) =>
-        (pi t s r \ copy (tc.prod-range t s) r :- !, copy t r, !) =>
+        (pi t s r \ copy (tc.prod-range t s _)  r :- !, copy t r, !) =>
         (pi t s r \ copy (tc.maybe-llam-tm t s) r :- !, copy t r, !) =>
           std.assert!  (copy A B) "[TC] clean-term error".
 
@@ -167,7 +182,7 @@ namespace tc {
         Link = tc.link.eta A' (fun Name Ty' B'),
         pi x\ sigma L'\ std.rev [x|L] L', name (B' x) B L'.
       % Going under prod-range
-      make-eta-link-aux A (tc.prod-range Prod _) BN L Link Ty' Bo :- !,
+      make-eta-link-aux A (tc.prod-range Prod _ _) BN L Link Ty' Bo :- !,
         make-eta-link-aux A Prod BN L Link Ty' Bo.
       % The type of a higher order variable can be hidden behind a definition
       % In this case we unfold this definition to get the prod constructor
@@ -217,7 +232,7 @@ namespace tc {
         i:list prop,
         o:prop.
       compile-premise L L2 P PTy ProofHd IsPositive ITy ProofTlR PremR Clause :-
-        ((pi a b c\ tc.get-TC-of-inst-type (tc.prod-range a c) b :- !, tc.get-TC-of-inst-type a b) => 
+        ((pi a b c d\ tc.get-TC-of-inst-type (tc.prod-range a c d) b :- !, tc.get-TC-of-inst-type a b) => 
           tc.get-TC-of-inst-type PTy TC), !,
         compile-ty L L1 P {neg IsPositive} PTy [] [] NewPrem,
         if (tc.class TC _ tc.deterministic _)
@@ -225,7 +240,32 @@ namespace tc {
           (NewPrem' = NewPrem),
         compile-ty L1 L2 ProofHd IsPositive ITy ProofTlR [NewPrem' | PremR] Clause.
       compile-premise L L1 _ _ ProofHd IsPositive ITy ProofTlR PremR Clause :-
-        compile-ty L L1 ProofHd IsPositive ITy ProofTlR PremR Clause. 
+        compile-ty L L1 ProofHd IsPositive ITy ProofTlR PremR Clause.
+
+      func build-unif-eq list term -> list prop.
+      build-unif-eq [] [].
+      build-unif-eq [_] [] :- !.
+      build-unif-eq [X1 | ([X2|_] as Xs)] [tc.link.unif-eq X1 X2|Ys] :-
+        build-unif-eq Xs Ys.
+
+      pred name-pair1 o:term, o:list term, o:nat.
+
+      func add-link-unif-eq (func list prop -> prop),
+        list nat, nat, term, term, list term, list prop -> prop.
+      add-link-unif-eq F []     _ _ _  []  PremR Clause :- !, std.assert!(F PremR Clause) "Mh", !.
+      add-link-unif-eq F [z|Ns] A P PTy LT PremR (pi x\ Clause x) :- !,
+          % TODO: N è l'arità e [x|LT] è la list di variabili caricate a questa arita'
+          % Bisogna caricare il tipo giusto in Pty + aggiungerlo in clause se
+          % è clause è in posizione positiva
+        clean-term PTy PTy',
+        pi x\ sigma Links PremR'\ ((decl x `x` PTy' :- !) ==>
+          coq.say "Type of" x "is" PTy',
+          if (A = z) (build-unif-eq [P,x|LT] Links) (build-unif-eq [x|LT] Links), !,
+          std.append Links PremR PremR',
+          (name-pair1 P [P,x|LT] A ==>
+          add-link-unif-eq F Ns (s N) P PTy [] PremR' (Clause x))).
+      add-link-unif-eq F [s N|Ns] A P PTy LT PremR (pi x\ Clause x) :- !,
+        pi x\ add-link-unif-eq F [N|Ns] A P PTy [x|LT] PremR (Clause x).
 
       :index (_ _ _ _ 1)
       func compile-ty 
@@ -237,21 +277,34 @@ namespace tc {
         list term,
         list prop
         -> prop.
-      compile-ty L L1 ProofHd IsPositive (tc.prod-range (prod N Ty Bo) Arity) ProofTlR PremR Clause :- !,
+      compile-ty L L1 ProofHd IsPositive (tc.prod-range (prod N Ty Bo) Arity ArL) ProofTlR PremR Clause :- !,
         std.do![
+          clean-term Ty Ty', 
+          coq.say "Compiling" (prod N Ty Bo) "with arL" ArL,
           if (IsPositive = tt) 
             (Clause = (pi x\ C x), E = is-uvar) 
-            (clean-term Ty Ty', Clause = (pi x\ decl x N Ty' => C x), E = is-name),
+            (Clause = (pi x\ decl x N Ty' => C x), E = is-name),
           pi p\ sigma F\
+            coq.say "ArL is" ArL,
             F = compile-premise L L1 p Ty ProofHd IsPositive (Bo p) [p|ProofTlR],
             decl p N Ty' =>
-            name-pair p p z => E p => add-link-eta-dedup F Arity p Ty [] PremR (C p)
+            name-pair p p z => E p => 
+            (
+              coq.say "Type of" p "is" Ty',
+              add-link-unif-eq F ArL z p PTy [] PremR (C p),
+            % coq.say "(RRR p) is" (RRR p),
+            % add-link-eta-dedup F Arity p Ty [] PremR (C p)
+            true
+            )
         ].
       compile-ty L L2 ProofHd IsPositive Goal ProofTlR PremR Clause :-
         std.do![    
+          std.findall (name-pair1 _ _ _) LL,
+          coq.say "LL is" LL,
+          std.map LL (x\r\ sigma T1 T2\ x = name-pair1 T1 T2 _, r = pr T1 T2) LL2,
           coq.mk-app ProofHd {std.rev ProofTlR} Proof,
-          decompile.decompile-term L L1 Proof Proof' Prem1,
-          decompile.decompile-term L1 L2 Goal Goal' Prem2,
+          std.spy-do![decompile.decompile-term LL2 L L1 Proof LL2' Proof' Prem1,
+          decompile.decompile-term LL2' L1 L2 Goal _ Goal' Prem2],
           compile-conclusion IsPositive Goal' Proof' Prem2 Prem1 {std.rev PremR} Clause
         ].
 
@@ -303,6 +356,7 @@ namespace tc {
       pi x\ tc.compile.instance Ty (pglobal InstGR x) (Clause x).
     instance-gr InstGR Clause :-
       coq.env.typeof InstGR Ty,
+      coq.say "Compiling" InstGR "with ty" Ty,
       tc.compile.instance Ty (global InstGR) Clause.
     
     namespace goal {
@@ -334,7 +388,7 @@ namespace tc {
       decompile-problematic-term (tc.maybe-eta-tm T S) L V [tc.link.eta V T' | L2] :-
         prune V S, !, fold-map T L T' L2.
 
-      decompile-problematic-term (tc.prod-range T _) A T' A' :- !,
+      decompile-problematic-term (tc.prod-range T _ _) A T' A' :- !,
         fold-map T A T' A'.
 
       decompile-problematic-term (tc.maybe-llam-tm (app [app[H|S] | NPF]) Sc) L Z [NL|L'] :- !,

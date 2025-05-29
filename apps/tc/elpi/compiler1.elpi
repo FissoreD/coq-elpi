@@ -21,6 +21,59 @@ namespace tc {
   get-locality "Global" [@global!].
   get-locality "Export" [].
 
+	pred unfolding-clause.mk i:string, i:int, i:list term, o:prop.
+	unfolding-clause.mk PredName 0 Params' (pi x y X\ Clause x y X) :- std.do! [
+		std.rev Params' Params,
+		pi x y X\ sigma Args Args' C C'\ std.do! [
+			% Hack: We check that no clause exists.
+			std.append Params [_, _] ArgsH,
+			coq.elpi.predicate PredName ArgsH CH,
+			not CH,
+			std.append Params [x, y] Args,
+			coq.elpi.predicate PredName Args C,
+			std.append Params [X, y] Args',
+			coq.elpi.predicate PredName Args' C',
+			Clause x y X = (C :- sigma Hd Hdgref Ag Hd' Xwhd P PU N X'\ !,
+				not (var x),
+				coq.reduction.whd-betaiota-deltazeta-for-iota-state x Xwhd,
+				if (x = Xwhd)
+					(coq.safe-dest-app x Hd Ag,
+					not (var Hd),
+					if (Hd = global (const Hdgref)) (coq.env.const-body Hdgref (some Hd'))
+						(Hd = primitive (proj P N),
+						coq.primitive.projection-unfolded P PU,
+						Hd' = primitive (proj PU N)),
+					coq.mk-app Hd' Ag X',
+					coq.reduction.whd-betaiota-deltazeta-for-iota-state X' X,
+					not (x = X))
+				(X = Xwhd),
+				C') ] ].
+	unfolding-clause.mk PredName N Params (pi x\ C x) :-
+		0 < N,
+		calc (N - 1) N',
+		pi x\ unfolding-clause.mk PredName N' [x|Params] (C x).
+
+	pred unfolding-clause.get-class i:term, o:int, o:gref.
+	unfolding-clause.get-class (prod _ _ (x\ Ty x)) N Name :-
+		pi x\ unfolding-clause.get-class (Ty x) N Name.
+	unfolding-clause.get-class Ty N Name :-
+		coq.safe-dest-app Ty (global Name) Args,
+		std.length Args N.
+
+	pred unfolding-clause i:gref.
+	unfolding-clause Inst :- std.do! [
+		coq.env.typeof Inst Ty,
+		tc.normalize-ty Ty Ty',
+		unfolding-clause.get-class Ty' NParams ClassGR,
+		0 < NParams,
+		tc.gref->pred-name ClassGR PredName,
+		calc (NParams - 1) NParams',
+		unfolding-clause.mk PredName NParams' [] Clause,
+		calc (int_to_string 100) S,
+		tc.add-tc-db _ (after S) Clause,
+		].
+
+
   func add-inst.aux gref, gref, list prop, grafting ->.
   add-inst.aux Inst TC Locality Grafting :-
     coq.env.current-section-path SectionPath,
@@ -36,6 +89,7 @@ namespace tc {
   % ENTRY-POINT for TC.Compiler
   func add-inst gref, gref, string, int ->.
   add-inst Inst TC LocalityStr Prio :-
+		(unfolding-clause Inst; true),
     get-locality LocalityStr Locality,
     if (Prio = -1) (tc.get-inst-prio Inst Prio1) (Prio1 = Prio),
     Grafting is after (int_to_string Prio1),

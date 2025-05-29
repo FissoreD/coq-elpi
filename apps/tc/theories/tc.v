@@ -57,6 +57,15 @@ Elpi Accumulate File compiler1.
 Elpi Accumulate File create_tc_predicate.
 Elpi Accumulate File modes.
 Elpi Accumulate File solver.
+
+Elpi Accumulate lp:{{
+main _.
+
+msolve L N :-
+	tc.time-it tc.oTC-time-msolve (coq.ltac.all (coq.ltac.open tc.solve-aux) L N) "msolve".
+msolve _ _ :- coq.ltac.fail _.
+}}.
+
 Elpi Query lp:{{
   sigma Options\ 
     tc.all-options Options,

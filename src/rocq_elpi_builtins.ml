@@ -926,7 +926,7 @@ let add_axiom_or_variable api id ty local_bkind options state =
     | None -> begin
       Dumpglob.dump_definition name false "ax";
       comAssumption_declare_axiom Vernacexpr.NoCoercion ~local:Locality.ImportDefaultBehavior ~kind (EConstr.to_constr sigma ty)
-        ~univs ~impargs ~inline:options.inline ~name
+        ~univs ~impargs ~inline:options.inline ~name:id
       end
   in
   let ucsts = match univs with UState.Monomorphic_entry x, _ -> x | _ -> Univ.ContextSet.empty in
@@ -3066,6 +3066,23 @@ NParams can always be omitted, since it is inferred.
     with Not_found -> !: [])),
   DocAbove);
 
+  MLCode(Pred("coq.equivalent-keys.add",
+    CIn(term, "K1",
+    In(int, "I1",
+    CIn(term, "K2",
+    In(int, "I2",
+    Full(proof_context, {|Declares K1 and K2 as equivalent keys with I1 and I2 arguments respectively.
+    Supported attributes:|}))))),
+      (fun k1 i1 k2 i2 ~depth { env } _ state ->
+        let sigma = get_sigma state in
+        let constr_key t = Option.get (Keys.constr_key env (EConstr.kind sigma) t) in
+        let () = try
+            Keys.declare_equiv_keys (constr_key k1) i1 (constr_key k2) i2
+          with _ -> raise No_clause in
+        state, (), [])),
+  DocAbove);
+
+
   LPCode {|% Deprecated, use coq.env.projections
 pred coq.CS.canonical-projections i:inductive, o:list (option constant).
 coq.CS.canonical-projections I L :-
@@ -3486,7 +3503,11 @@ Universe constraints are put in the constraint store.|})))),
        let sigma, ty = Typing.type_of proof_context.env sigma t in
        let sigma, r = match ety with
        | Data ety ->
-           let sigma = Evarconv.unify proof_context.env sigma ~with_ho:true Conversion.CUMUL ty ety in
+           let flags = Evarconv.default_flags_of TransparentState.full in
+           let flags = {flags with with_cs = false} in
+           let sigma =
+             try Evarconv.unify ~flags proof_context.env sigma ~with_ho:true Conversion.CUMUL ty ety
+             with _ -> Evarconv.unify proof_context.env sigma ~with_ho:true Conversion.CUMUL ty ety in
            sigma, ?: None +! B.mkOK
        | NoData ->
            let flags = Evarconv.default_flags_of TransparentState.full in
@@ -3690,6 +3711,19 @@ Supported attributes:
   DocAbove);
 
   LPDoc "-- Coq's reduction machines ------------------------------------";
+
+  MLCode(Pred("coq.reduction.whd-betaiota-deltazeta-for-iota-state",
+    CIn(term,"T",
+    COut(term,"Tred",
+    Read(proof_context, {|Puts T in weak head beta-iota-normal form, beta-iota-delta-zeta reducing match arguments.
+Supported attributes:
+- @redflags! (default coq.redflags.all)|}))),
+    (fun t _ ~depth proof_context constraints state ->
+       let sigma = get_sigma state in
+       let flags = Option.default RedFlags.all proof_context.options.redflags in
+       let t = Reductionops.Stack.zip sigma (Reductionops.whd_betaiota_deltazeta_for_iota_state TransparentState.full proof_context.env sigma (t, Reductionops.Stack.empty)) in
+       !: t)),
+  DocAbove);
 
   MLCode(Pred("coq.reduction.lazy.whd",
     CIn(term,"T",
@@ -4125,6 +4159,13 @@ coq.id->name S N :- coq.string->name S N.
     Out(B.list B.string, "FullPath",
     Read(unit_ctx, "extract the full path (kernel name without final id), each component is a separate list item"))),
   (fun gr _ ~depth h c state -> !: (gr2path gr))),
+  DocAbove);
+
+  MLCode(Pred("coq.projection->gref",
+    In(projection, "Proj",
+    Out(gref, "GR",
+    Read(unit_ctx, "extract the name of the compatibility constant associated to Proj"))),
+  (fun p _ ~depth h c state -> !: (GlobRef.ConstRef (Projection.constant p)))),
   DocAbove);
 
   Rocq_elpi_builtins_synterp.modpath_to_path;

@@ -45,10 +45,10 @@ namespace tc {
       func maybe-eta term ->.
       maybe-eta (fun _ _ B) :- pi x\ maybe-eta-aux (B x) [x].
 
-      func unify-left-right term, term ->.
-      unify-left-right (fun _ _ A) (fun _ _ A') :- !, pi x\ unify-left-right (A x) (A' x).
-      unify-left-right A (fun _ _ _ as T) :- !, eta-expand A Ae, pi x\ unify-left-right Ae T.
-      unify-left-right A A' :- A = A'.
+      pred unify-left-right i:term, i:term.
+      unify-left-right (fun N T A) (fun _ _ A') :- !, @pi-decl N T x\ unify-left-right (A x) (A' x).
+      unify-left-right A (fun N Ty _ as T) :- !, eta-expand A Ae, @pi-decl N Ty x\ unify-left-right Ae T.
+      unify-left-right A A' :- coq.unify-eq A A' ok.
 
       func progress-eta-left term -> term.
       progress-eta-left A _ :- var A, !, fail.

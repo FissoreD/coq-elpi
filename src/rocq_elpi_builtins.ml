@@ -1164,7 +1164,7 @@ let add_axiom_or_variable api id ty local_bkind options state =
     | None -> begin
       Dumpglob.dump_definition name false "ax";
       comAssumption_declare_axiom Vernacexpr.NoCoercion ~local:Locality.ImportDefaultBehavior ~kind (EConstr.to_constr sigma ty)
-        ~univs ~impargs ~inline:options.inline ~name:id
+        ~univs ~impargs ~inline:options.inline ~name:name
       end
   in
   let ucsts = get_entry_context univs in

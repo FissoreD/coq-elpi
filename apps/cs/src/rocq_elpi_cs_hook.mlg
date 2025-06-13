@@ -13,6 +13,8 @@ let structure_projection_nparams env ind = Structures.Structure.projection_npara
 let structure_projection_nparams env ind = Structures.Structure.projection_nparams env ind
 [%%endif]
 
+let debug_cs = CDebug.create ~name:"cs" ()
+
 let elpi_cs_hook program env sigma ((proji, u), params1, c1) (t2, args2) =
 	  let atts = [] in
      let rhs = Reductionops.Stack.zip sigma (t2, Reductionops.Stack.append_app_list args2 Reductionops.Stack.empty) in
@@ -38,6 +40,7 @@ let elpi_cs_hook program env sigma ((proji, u), params1, c1) (t2, args2) =
 	  | Some (cprogram, _) ->
 		 begin match Interp.run ~loc cprogram (Fun query) with
 		 | API.Execute.Success solution ->
+      let () = debug_cs (fun () -> Pp.(v 0 (str "elpi_cs_hook fails silently" ++ cut ()))) in
 			let gls = Evar.Set.singleton goal_evar in
 			let sigma, _, _ = Rocq_elpi_HOAS.solution2evd ~eta_contract_solution:false sigma solution gls in
 			if Evd.is_defined sigma goal_evar then
@@ -60,7 +63,9 @@ let elpi_cs_hook program env sigma ((proji, u), params1, c1) (t2, args2) =
 				 params = List.map EConstr.of_constr params;
 				 cvalue_abstraction = None;
 				 cvalue_arguments = Array.to_list sk1})
-			else None
+			else
+        let () = debug_cs (fun () -> Pp.(v 0 (str "elpi_cs_hook fails silently" ++ cut ()))) in
+        None
 		 | API.Execute.NoMoreSteps
 		 | API.Execute.Failure -> None
 		 end

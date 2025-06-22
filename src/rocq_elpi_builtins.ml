@@ -3904,22 +3904,21 @@ is equivalent to Elpi Export TacName.|})))),
     Full (proof_context,
 {|typchecks a term T returning its type Ty. If Ty is provided, then
 the inferred type is unified (see unify-leq) with it.
-Universe constraints are put in the constraint store.|})))),
+Universe constraints are put in the constraint store.
+Supported attributes:
+- @no-tc! (default false, infer neither typeclasses nor canonical structures)|})))),
   (fun t ety diag ~depth proof_context _ state ->
      try
        let sigma = get_sigma state in
        let (sigma, conv_pbs) = Evd.extract_all_conv_pbs sigma in
        let sigma, ty = Typing.type_of proof_context.env sigma t in
+       let flags = Evarconv.default_flags_of TransparentState.full in
+       let flags = if proof_context.options.no_tc = Some true then {flags with with_cs = false} else flags in
        let sigma, r = match ety with
        | Data ety ->
-           let flags = Evarconv.default_flags_of TransparentState.full in
-           let flags = {flags with with_cs = false} in
-           let sigma =
-             try Evarconv.unify ~flags proof_context.env sigma ~with_ho:true Conversion.CUMUL ty ety
-             with _ -> Evarconv.unify proof_context.env sigma ~with_ho:true Conversion.CUMUL ty ety in
+           let sigma = Evarconv.unify ~flags proof_context.env sigma ~with_ho:true Conversion.CUMUL ty ety in
            sigma, ?: None +! B.mkOK
        | NoData ->
-           let flags = Evarconv.default_flags_of TransparentState.full in
            let sigma = Evarconv.solve_unif_constraints_with_heuristics ~flags ~with_ho:true proof_context.env sigma in
            sigma, !: ty +! B.mkOK
        in let sigma = List.fold_left (fun sigma conv_pb -> Evd.add_conv_pb conv_pb sigma) sigma conv_pbs in

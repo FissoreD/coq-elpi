@@ -85,7 +85,9 @@ namespace tc {
   func add-tc-db id, grafting, prop ->.
   :name "tc-adder"
   add-tc-db _          _     Clause :- not (ground_term Clause), coq.error "[TC] anomaly: open rule:" Clause, !.
-  add-tc-db ClauseName Graft Clause :- coq.elpi.accumulate _ "tc.db" (clause ClauseName Graft Clause), !.
+  add-tc-db ClauseName Graft Clause :-
+    if (@global!) (Scope = execution-site) (Scope = current),
+    coq.elpi.accumulate _ "tc.db" (clause ClauseName Graft Clause), !.
   add-tc-db _          _     Clause :- coq.error "cannot add " PR " to tc.db".
 
   % takes a tc-instance and return the gref of the inst

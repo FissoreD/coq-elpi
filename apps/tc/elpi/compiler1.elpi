@@ -74,7 +74,7 @@ namespace tc {
     tc.compile.instance-gr Inst Clause, 
     tc.get-full-path Inst ClauseName, !,
     (Locality => (
-      tc.add-tc-db ClauseName Grafting Clause, 
+      tc.add-tc-db _ Grafting Clause, 
       tc.add-tc-db _ Grafting (tc.instance SectionPath Inst TC Locality))).
   add-inst.aux Inst _ _ _ :- 
     (@global! => tc.add-tc-db _ _ (tc.banned Inst)),

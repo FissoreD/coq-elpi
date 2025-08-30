@@ -82,7 +82,7 @@ namespace tc {
 
   func add-inst gref, gref, string, int ->.
   add-inst Inst TC LocalityStr Prio :-
-		(unfolding-clause Inst; true),
+		if (unfolding-clause Inst) (true) (true),
     get-locality LocalityStr Locality,
     if (Prio = -1) (tc.get-inst-prio Inst Prio1) (Prio1 = Prio),
     Grafting is after (int_to_string Prio1),

@@ -72,7 +72,7 @@ not _.
 
 % [declare_constraint C Key1 Key2...] declares C blocked
 % on Key1 Key2 ... (variables, or lists thereof).
-external func declare_constraint (func) -> any .. .
+external type declare_constraint any -> any -> variadic any fprop.
 
 % [print_constraints] prints all constraints
 external func print_constraints.

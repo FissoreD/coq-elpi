@@ -2874,6 +2874,16 @@ denote the same x as before.|};
       with Not_found -> raise No_clause)),
   DocAbove);
 
+  MLCode(Pred("coq.env.projection-record?",
+    In(constant, "Constant",
+    Out(inductive, "StructureName",
+    Easy "if the constant is a projection, returns its record.")),
+    (fun c _ ~depth ->
+      let c = match c with Constant t -> t | _ -> raise No_clause in 
+      try !: ((Structures.Structure.find_from_projection c).name)
+      with Not_found -> raise No_clause)),
+  DocAbove);
+
   MLCode(Pred("coq.env.primitive-projections",
     In(inductive, "StructureName",
     Out(list (option (pair projection int)), "Projections",

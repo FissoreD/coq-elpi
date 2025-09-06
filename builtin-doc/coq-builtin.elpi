@@ -998,6 +998,10 @@ external func coq.env.projections inductive -> list (option constant).
 % projection, returns the number of parameters of its record.
 external func coq.env.projection? constant -> int.
 
+% [coq.env.projection-record? Constant StructureName] if the constant is a
+% projection, returns its record.
+external func coq.env.projection-record? constant -> inductive.
+
 % [coq.env.primitive-projections StructureName Projections] given a record
 % StructureName lists all primitive projections
 external func coq.env.primitive-projections inductive -> list (option (pair projection int)).
@@ -1590,6 +1594,9 @@ external func coq.redflags.sub coq.redflags,
                               list coq.redflag -> coq.redflags.
 
 % -- Coq's reduction machines ------------------------------------
+
+% [coq.abs_evars T Tabs] Replaces evars with lambda variables.
+external func coq.abs_evars term -> term.
 
 % [coq.reduction.whd-betaiota-deltazeta-for-iota-state T Tred] Puts T in
 % weak head beta-iota-normal form, beta-iota-delta-zeta reducing match
@@ -2189,6 +2196,10 @@ external func coq.gref.map.map coq.gref.map A,
 % [coq.gref.map.fold M Acc F Acc1] fold M w.r.t. the predicate F
 external func coq.gref.map.fold coq.gref.map A, C, 
                                (gref -> A -> C -> C -> prop) -> C.
+
+% [std.gref.toposort Pred L R] sorts L according to the order given by Pred
+external func std.gref.toposort list (pair gref gref), 
+                               list gref -> list gref.
 
 kind coq.univ.set type.
 

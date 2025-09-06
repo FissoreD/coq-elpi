@@ -16,7 +16,6 @@ let structure_projection_nparams env ind = Structures.Structure.projection_npara
 let debug_cs = CDebug.create ~name:"cs" ()
 
 let elpi_cs_hook program env sigma ((proji, u), params1, c1) (t2, args2) =
-    let () = debug_cs (fun () -> Pp.(v 0 (str "start elpi_cs_hook" ++ cut ()))) in
 	  let atts = [] in
      let rhs = Reductionops.Stack.zip sigma (t2, Reductionops.Stack.append_app_list args2 Reductionops.Stack.empty) in
      let sigma, (goal_ty, _) = Evarutil.new_type_evar env sigma Evd.UnivRigid in
@@ -55,19 +54,15 @@ let elpi_cs_hook program env sigma ((proji, u), params1, c1) (t2, args2) =
 			  let lhs = EConstr.of_constr lhs in
 			  let _, sk1 = EConstr.decompose_app sigma lhs in
 			  let open Structures.CanonicalSolution in
-			  let r = Some (sigma, {
+			  Some (sigma, {
 				 constant = EConstr.of_constr constant;
 				 abstractions_ty = args_type;
 				 body = lhs;
 				 nparams;
 				 params = List.map EConstr.of_constr params;
 				 cvalue_abstraction = None;
-				 cvalue_arguments = Array.to_list sk1}) in
-        let () = debug_cs (fun () -> Pp.(v 0 (str "elpi_cs_hook succeeds" ++ cut ()))) in
-        r
-			else
-        let () = debug_cs (fun () -> Pp.(v 0 (str "elpi_cs_hook fails silently" ++ cut ()))) in
-        None
+				 cvalue_arguments = Array.to_list sk1})
+			else None
 		 | API.Execute.NoMoreSteps
 		 | API.Execute.Failure -> None
 		 end

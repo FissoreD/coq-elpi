@@ -722,6 +722,7 @@ coq.term->gref (pglobal GR _) GR :- !.
 coq.term->gref (app [Hd|_]) GR :- !, coq.term->gref Hd GR.
 coq.term->gref (let _ _ T x\x) GR :- !, coq.term->gref T GR.
 coq.term->gref (primitive (proj Proj _)) (const C) :- coq.env.primitive-projection? Proj C _, !.
+coq.term->gref (fun _ _ Body) GR :- !, (pi x\ coq.term->gref (Body x) GR).
 :name "term->gref:fail"
 coq.term->gref Term _ :-
   fatal-error-w-data "term->gref: input has no global reference" Term.

@@ -1164,7 +1164,7 @@ let add_axiom_or_variable api id ty local_bkind options state =
     | None -> begin
       Dumpglob.dump_definition name false "ax";
       comAssumption_declare_axiom Vernacexpr.NoCoercion ~local:Locality.ImportDefaultBehavior ~kind (EConstr.to_constr sigma ty)
-        ~univs ~impargs ~inline:options.inline ~name:name
+        ~univs ~impargs ~inline:options.inline ~name
       end
   in
   let ucsts = get_entry_context univs in
@@ -3922,13 +3922,12 @@ Supported attributes:
        let sigma = get_sigma state in
        let (sigma, conv_pbs) = Evd.extract_all_conv_pbs sigma in
        let sigma, ty = Typing.type_of proof_context.env sigma t in
-       let flags = Evarconv.default_flags_of TransparentState.full in
-       let flags = if proof_context.options.no_tc = Some true then {flags with with_cs = false} else flags in
        let sigma, r = match ety with
        | Data ety ->
-           let sigma = Evarconv.unify ~flags proof_context.env sigma ~with_ho:true Conversion.CUMUL ty ety in
+           let sigma = Evarconv.unify proof_context.env sigma ~with_ho:true Conversion.CUMUL ty ety in
            sigma, ?: None +! B.mkOK
        | NoData ->
+           let flags = Evarconv.default_flags_of TransparentState.full in
            let sigma = Evarconv.solve_unif_constraints_with_heuristics ~flags ~with_ho:true proof_context.env sigma in
            sigma, !: ty +! B.mkOK
        in let sigma = List.fold_left (fun sigma conv_pb -> Evd.add_conv_pb conv_pb sigma) sigma conv_pbs in
@@ -4129,6 +4128,64 @@ Supported attributes:
   DocAbove);
 
   LPDoc "-- Coq's reduction machines ------------------------------------";
+
+
+  MLCode(Pred("coq.abs_evars",
+    CIn(term,"T",
+    COut(term,"Tabs",
+    Read(proof_context, {|Replaces evars with lambda variables.|}))),
+    (fun t _ ~depth proof_context constraints state ->
+      (* N.B. copied from coq/plugins/ssr/ssrcommon.ml *)
+      let env_size env = List.length (Environ.named_context env) in
+      let mk_tagged_id t i = Id.of_string (Printf.sprintf "%s%d_" t i) in
+      let evar_tag = "_evar_" in
+      let mk_evar_name n = Names.Name (mk_tagged_id evar_tag n) in
+      let abs_evars env sigma0 ?(rigid = []) (sigma, c0) =
+        let open Evd in
+        let open Context in
+        let c0 = Evarutil.nf_evar sigma c0 in
+        let sigma0, ucst = sigma0, Evd.ustate sigma in
+        let nenv = env_size env in
+        let abs_evar n k =
+          let open EConstr in
+          let evi = Evd.find_undefined sigma k in
+          let concl = Evd.evar_concl evi in
+          let dc = CList.firstn n (evar_filtered_context evi) in
+          let abs_dc c = function
+          | Named.Declaration.LocalDef (x,b,t) -> mkNamedLetIn sigma x b t (mkArrow t x.binder_relevance c)
+          | Named.Declaration.LocalAssum (x,t) -> mkNamedProd sigma x t c in
+          let t = Context.Named.fold_inside abs_dc ~init:concl dc in
+          Evarutil.nf_evar sigma t in
+        let rec put evlist c = match EConstr.kind sigma c with
+        | Evar (k, a) ->
+          if CList.mem_assoc k evlist || Evd.mem sigma0 k || CList.mem k rigid then evlist else
+          let n = max 0 (SList.length a - nenv) in
+          let t = abs_evar n k in (k, (n, t)) :: put evlist t
+        | _ -> EConstr.fold sigma put evlist c in
+        let evlist = put [] c0 in
+        if CList.is_empty evlist then
+          c0, [], ucst
+        else
+          let open EConstr in
+          let rec lookup k i = function
+          | [] -> 0, 0
+          | (k', (n, _)) :: evl -> if k = k' then i, n else lookup k (i + 1) evl in
+          let rec get i c = match EConstr.kind sigma c with
+          | Evar (ev, a) ->
+            let j, n = lookup ev i evlist in
+            if j = 0 then EConstr.map sigma (get i) c else if n = 0 then mkRel j else
+            let a = Array.of_list @@ Evd.expand_existential sigma (ev, a) in
+            mkApp (mkRel j, Array.init n (fun k -> get i a.(n - 1 - k)))
+          | _ -> EConstr.map_with_binders sigma ((+) 1) get i c in
+          let rec loop c i = function
+          | (_, (n, t)) :: evl ->
+            loop (mkLambda (make_annot (mk_evar_name n) ERelevance.relevant, get (i - 1) t, c)) (i - 1) evl
+          | [] -> c in
+          loop (get 1 c0) 1 evlist, CList.map fst evlist, ucst in
+       let env = proof_context.env in
+       let t, _, _ = abs_evars env (Evd.from_env env) (get_sigma state, t) in
+       !: t)),
+  DocAbove);
 
   MLCode(Pred("coq.reduction.whd-betaiota-deltazeta-for-iota-state",
     CIn(term,"T",
@@ -4929,7 +4986,28 @@ Supported attributes:
   LPDoc "-- Utils ------------------------------------------------------------";
   ] @
   gref_set_decl @
-  B.ocaml_map ~name:"coq.gref.map" gref (module GRMap) @
+  B.ocaml_map ~name:"coq.gref.map" gref (module GRMap) @ [
+  MLCode(Pred("std.gref.toposort",
+    In(list (pair gref gref), "Pred",
+    In(list gref, "L",
+    Out(list gref, "R",
+    Easy "sorts L according to the order given by Pred"))),
+    (fun pred l _ ~depth:_ ->
+      let elts = List.fold_left (fun l x -> GRSet.add x l) GRSet.empty l in 
+      let edges = List.fold_left (fun edges (x, y) ->
+        if GRSet.mem x elts && GRSet.mem y elts then
+          GRMap.update x (function None -> Some [y] | Some l -> Some (y :: l)) edges
+        else edges) GRMap.empty pred in
+      let rec visit (seen, acc) x =
+        if GRSet.mem x seen then (seen, acc) else
+        let () = debug Pp.(fun () -> str "visit " ++ GlobRef.print x) in
+        let seen = GRSet.add x seen in
+        let (seen, acc) = List.fold_left visit (seen, acc) (try GRMap.find x edges with _ -> []) in
+        seen, x :: acc in
+      let _, l = List.fold_left visit (GRSet.empty, []) l in
+      !: l)),
+    DocAbove)
+  ] @
   B.ocaml_set ~name:"coq.univ.set" univ (module UnivSet) @
   B.ocaml_map ~name:"coq.univ.map" univ (module UnivMap) @
   universe_level_set_decl @

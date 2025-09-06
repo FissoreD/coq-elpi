@@ -1771,7 +1771,7 @@ let rec constr2lp coq_ctx ~calldepth ~depth state t =
   debug Pp.(fun () ->
       str"term2lp: depth=" ++ int depth ++
       str " ctx=" ++ pp_coq_ctx coq_ctx state ++
-      str " term=" ++Printer.pr_econstr_env (get_global_env state) (get_sigma state) t);
+      str " term=" ++ Termops.Internal.debug_print_constr (get_sigma state) t);
   let state, t = aux ~depth coq_ctx.env state t in
   debug Pp.(fun () -> str"term2lp (out): " ++ str (pp2string (P.term depth) t));
   state, t, !gls

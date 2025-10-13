@@ -824,11 +824,6 @@ external func std.string.map.map std.string.map A,
 external func std.string.map.fold std.string.map A, C, 
                                  (string -> A -> C -> C -> prop) -> C.
 
-% [std.string.toposort Pred L R] sorts L according to the order given by
-% Pred
-external func std.string.toposort list (pair string string), 
-                                 list string -> list string.
-
 % CAVEAT: the type parameter of std.int.map must be a closed term
 
 kind std.int.map type -> type.

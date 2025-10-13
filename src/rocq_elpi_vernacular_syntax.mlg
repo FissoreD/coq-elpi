@@ -89,7 +89,6 @@ let lib_ref id =
           ++ str " (you may need to require some .v file with \
                   `Register ... as " ++ str id ++ str ".`).")
 
-[%%if coq = "9.0" || coq = "9.1"]
 let lookahead_lib_colon kwstate strm =
   match Gramlib.LStream.peek_nth kwstate 0 strm with
   | Tok.IDENT "lib" ->

@@ -786,20 +786,9 @@ let pr_constr_expr env sigma c = Ppconstr.pr_constr_expr ~flags:(Ppconstr.curren
 let detype_closed_glob env sigma c = Detyping.detype_closed_glob ~flags:(PrintingFlags.Detype.current()) env sigma c
 [%%endif]
 
-let detype_closed_glob env sigma closure =
-  let gbody = detype_closed_glob env sigma closure in
-  fix_detype gbody
-
-[%%if coq = "9.0" || coq = "9.1"]
 let detype_to_pattern env sigma c =
   let c = detype env sigma c in
   Patternops.pattern_of_glob_constr env c
-[%%else]
-let detype_to_pattern env sigma c =
-  let c = detype env sigma c in
-  let ids, p = Patternops.pattern_of_glob_constr env c in
-  ids, Patternops.interp_pattern env sigma Glob_ops.empty_lvar p
-[%%endif]
 
 type qualified_name = string list
 

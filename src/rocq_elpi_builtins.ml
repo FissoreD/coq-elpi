@@ -44,6 +44,8 @@ open Names
 open Rocq_elpi_utils
 open Rocq_elpi_HOAS
 
+let debug_cg = CDebug.create ~name:"cg" ()
+
 let string_of_ppcmds options pp =
   let b = Buffer.create 512 in
   let fmt = Format.formatter_of_buffer b in

@@ -17,6 +17,8 @@ open Names
 module G = GlobRef
 open Rocq_elpi_utils
 
+let debug2 = CDebug.create ~name:"elpi2" ()
+
 (* ************************************************************************ *)
 (* ****************** HOAS of Coq terms and goals ************************* *)
 (* See also coq-HOAS.elpi (terms)                                           *)

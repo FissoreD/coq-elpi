@@ -2993,6 +2993,7 @@ let sealed_goals2coqgoals all_goals constraints state assignments pp_ctx =
 let solution2evd ~eta_contract_solution sigma0 { API.Data.constraints; assignments; state; pp_ctx } roots =
   let state, solved_goals, _, _gls = elpi_solution_to_coq_solution ~eta_contract_solution ~calldepth:0 constraints state in
   let sigma = get_sigma state in
+  let roots = Evd.fold (fun k _ acc -> Evar.Set.add k acc) sigma0 roots in 
   let reachable_undefined_evars = reachable sigma roots Evar.Set.empty in
   let declared_goals, shelved_goals =
     sealed_goals2coqgoals (Evar.Set.diff reachable_undefined_evars solved_goals) constraints state assignments pp_ctx in

@@ -83,7 +83,7 @@ do-match X1 I X2 J F R :-
 
 % -----------------------------------------------------------------------------
 func do-branch term, term, term, term, term, list term, list term -> term.
-do-branch X2 J F K KTY Vars _ {{ @eqb_core_defs.eqb_body _ _ _ _ lp:FLDP lp:F lp:TAG lp:X lp:X2 }} :- std.do! [
+do-branch X2 J F K KTY Vars _ {{ @eqb_core_defs.eqb_body _ lp:{{ global (const T) }} _ _ lp:FLDP lp:F lp:TAG lp:X lp:X2 }} :- std.do! [
   coq.safe-dest-app KTY (global (indt I)) ParamsI,
   std.assert! (fields-for I _ FLD _ _) "derive.eqb: run derive.fields before",
   coq.safe-dest-app J _ ParamsJ,

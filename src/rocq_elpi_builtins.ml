@@ -3924,12 +3924,12 @@ Supported attributes:
        let sigma = get_sigma state in
        let (sigma, conv_pbs) = Evd.extract_all_conv_pbs sigma in
        let sigma, ty = Typing.type_of proof_context.env sigma t in
+       let flags = { (Evarconv.default_flags_of TransparentState.full) with with_cs = (proof_context.options.no_tc <> Some true) } in
        let sigma, r = match ety with
        | Data ety ->
-           let sigma = Evarconv.unify proof_context.env sigma ~with_ho:true Conversion.CUMUL ty ety in
+           let sigma = Evarconv.unify ~flags proof_context.env sigma ~with_ho:true Conversion.CUMUL ty ety in
            sigma, ?: None +! B.mkOK
        | NoData ->
-           let flags = Evarconv.default_flags_of TransparentState.full in
            let sigma = Evarconv.solve_unif_constraints_with_heuristics ~flags ~with_ho:true proof_context.env sigma in
            sigma, !: ty +! B.mkOK
        in let sigma = List.fold_left (fun sigma conv_pb -> Evd.add_conv_pb conv_pb sigma) sigma conv_pbs in

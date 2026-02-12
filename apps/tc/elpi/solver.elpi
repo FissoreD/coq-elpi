@@ -25,7 +25,7 @@ namespace tc {
     if-true print-solution-pp (coq.say "[TC] The proof is <<<" {coq.term->string Proof} ">>>"),
       
     /*********** CHECK IF THE PROOF TYPECHECKS ***********/
-    tc.time-it tc.oTC-time-refine (@no-tc! => refine.typecheck Proof G GL) "refine.typecheck",
+    tc.time-it tc.oTC-time-refine (refine.typecheck Proof G GL) "refine.typecheck",
     
     if-true print-solution (coq.say "[TC] The proof typechecks").
 

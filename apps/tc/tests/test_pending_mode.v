@@ -94,12 +94,13 @@ Module ground3.
   Elpi TC.Pending_mode + +.
   Class C {i : Type} (f : i -> i -> Prop).
   Instance i {X : Type}: C (@eq X). Qed.
-  Hint Mode C ! ! : typeclass_instances.
 
   Goal exists (X : Type), C (@eq X). 
     eexists.
-    Fail apply _.
-  Abort.
+    apply _.
+    Unshelve.
+    apply nat.
+  Qed.
 End ground3.
 
 Module ground4.
@@ -122,8 +123,8 @@ Module rigid_head1.
 
   Goal exists (x : Type), C (list x). 
     eexists.
-    apply _.
-  Qed.
+    Fail apply _.
+  Abort.
 
   Goal exists (x : Type), C x. 
     eexists.
@@ -139,8 +140,10 @@ Module rigid_head2.
 
   Goal exists (X : Type), C (@eq X). 
     eexists.
-    Fail apply _.
-  Abort.
+    apply _.
+    Unshelve.
+    apply nat.
+  Qed.
 End rigid_head2.
 
 Module simplEq.

@@ -2881,8 +2881,9 @@ denote the same x as before.|};
     Out(inductive, "StructureName",
     Easy "if the constant is a projection, returns its record.")),
     (fun c _ ~depth ->
+      let env = Global.env () in
       let c = match c with Constant t -> t | _ -> raise No_clause in 
-      try !: ((Structures.Structure.find_from_projection c).name)
+      try !: ((Structures.Structure.find_from_projection env c).name)
       with Not_found -> raise No_clause)),
   DocAbove);
 
@@ -4197,7 +4198,6 @@ Supported attributes:
 - @redflags! (default coq.redflags.all)|}))),
     (fun t _ ~depth proof_context constraints state ->
        let sigma = get_sigma state in
-       let flags = Option.default RedFlags.all proof_context.options.redflags in
        let t = Reductionops.Stack.zip sigma (Reductionops.whd_betaiota_deltazeta_for_iota_state TransparentState.full proof_context.env sigma (t, Reductionops.Stack.empty)) in
        !: t)),
   DocAbove);

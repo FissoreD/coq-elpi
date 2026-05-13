@@ -4538,12 +4538,12 @@ Supported attributes:
       match call_tactic ~depth state ~no_tc proof_context evar tactic with
       | Result.Ok (state, subgoals, assignments) ->
         (* universe constraints fixed by the code above*)
-        let diags =
+       let diags =
           match diags with
           | [] -> []
           | _ :: _ :: _ -> U.type_error "coq.ltac.call-ltac1: too many arguments"
           | _ -> [Some B.mkOK] in
-        Univ.ContextSet.empty, state, !: subgoals +! diags, assignments
+        Univ.ContextSet.empty, state, !: subgoals +! diags, assignments 
       | Result.Error ie ->
         match diags with
         | [] -> raise No_clause (* optimization: don't print the error if caller wants OK *)

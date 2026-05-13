@@ -16,6 +16,7 @@ let structure_projection_nparams env ind = Structures.Structure.projection_npara
 let debug_cs = CDebug.create ~name:"cs" ()
 
 let elpi_cs_hook program env sigma ((proji, u), params1, c1) (t2, args2) =
+    let () = debug_cs (fun () -> Pp.(str "starting cs hook" ++ Termops.Internal.print_constr_env env sigma c1 ++ cut () ++ Termops.Internal.print_constr_env env sigma t2)) in
 	  let atts = [] in
      let rhs = Reductionops.Stack.zip sigma (t2, Reductionops.Stack.append_app_list args2 Reductionops.Stack.empty) in
      let sigma, (goal_ty, _) = Evarutil.new_type_evar env sigma Evd.UnivRigid in
@@ -38,12 +39,15 @@ let elpi_cs_hook program env sigma ((proji, u), params1, c1) (t2, args2) =
     match Interp.get_and_compile ~loc program with
 	  | None -> None
 	  | Some (cprogram, _) ->
+      let () = debug_cs (fun () -> Pp.(str "running cs hook" ++ Termops.Internal.print_constr_env env sigma c1 ++ cut () ++ Termops.Internal.print_constr_env env sigma t2)) in
 		 begin match Interp.run ~loc cprogram (Fun query) with
 		 | API.Execute.Success solution ->
+      let () = debug_cs (fun () -> Pp.(str "cs hook found solution")) in
 			let gls = Evar.Set.singleton goal_evar in
 			let sigma, _, _ = Rocq_elpi_HOAS.solution2evd ~eta_contract_solution:false sigma solution gls in
 			if Evd.is_defined sigma goal_evar then
-           let constant = EConstr.to_constr ~abort_on_undefined_evars:false sigma goal in
+        let () = debug_cs (fun () -> Pp.(str "cs hook solution is defined")) in
+        let constant = EConstr.to_constr ~abort_on_undefined_evars:false sigma goal in
 			  let args_goal, t = Reduction.whd_decompose_lambda env constant in
 			  let args_type = List.rev_map Context.Rel.Declaration.get_type args_goal in
 			  let args_type = List.map EConstr.of_constr args_type in
@@ -54,6 +58,7 @@ let elpi_cs_hook program env sigma ((proji, u), params1, c1) (t2, args2) =
 			  let lhs = EConstr.of_constr lhs in
 			  let _, sk1 = EConstr.decompose_app sigma lhs in
 			  let open Structures.CanonicalSolution in
+        let () = debug_cs (fun () -> Pp.(str "cs hook returns")) in
 			  Some (sigma, {
 				 constant = EConstr.of_constr constant;
 				 abstractions_ty = args_type;
@@ -65,6 +70,9 @@ let elpi_cs_hook program env sigma ((proji, u), params1, c1) (t2, args2) =
 			else None
 		 | API.Execute.NoMoreSteps
 		 | API.Execute.Failure -> None
+     | exception e ->
+      let () = debug_cs (fun () -> Pp.(str "cs hook failed: " ++ CErrors.print e)) in
+       None
 		 end
 
 let add_cs_hook =

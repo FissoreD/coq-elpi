@@ -4767,7 +4767,9 @@ coq.id->name S N :- coq.string->name-relevant S N.
     In(projection, "Proj",
     Out(gref, "GR",
     Read(unit_ctx, "extract the name of the compatibility constant associated to Proj"))),
-  (fun p _ ~depth h c state -> !: (GlobRef.ConstRef (Projection.constant p)))),
+  (fun p _ ~depth h c state ->
+    let env = get_global_env state in
+    !: (GlobRef.ConstRef (Environ.projection_repr_constant env (Projection.repr p))))),
   DocAbove);
 
   Rocq_elpi_builtins_synterp.modpath_to_path;

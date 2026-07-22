@@ -1,20 +1,17 @@
 /* license: GNU Lesser General Public License Version 2.1 or later           */
 /* ------------------------------------------------------------------------- */
-main _.
-
-msolve L N :- tc.time-it tc.oTC-time-msolve (coq.ltac.all (coq.ltac.open tc.solve-aux) L N) "msolve".
-msolve L _ :- coq.ltac.fail _ "[TC] fail to solve" L.
-
-msolve L N :- tc.time-it tc.oTC-time-msolve (coq.ltac.all (coq.ltac.open tc.solve-aux) L N) "msolve".
-msolve L _ :- coq.ltac.fail _ "[TC] fail to solve" L.
 
 namespace tc {
+  pred msolve list sealed-goal -> list sealed-goal.
+  msolve L N :- tc.time-it tc.oTC-time-msolve (coq.ltac.all (coq.ltac.open tc.solve-aux) L N) "msolve".
+  msolve L _ :- coq.ltac.fail _ "[TC] fail to solve" L.
+
   pred build-query-from-goal i:term, i:term, o:prop, o:list prop.
   build-query-from-goal Goal Proof Q PostProcess :-
     tc.compile.goal Goal Goal' PostProcess, !,
     coq.safe-dest-app Goal' (global TC) TL',
     std.append TL' [Proof] TL, !,
-    coq.elpi.predicate {tc.gref->pred-name TC} TL Q.
+    coq.elpi.predicate {tc.gref->pred-name "tc" TC} TL Q.
 
   type tc.mode_fail term.
 

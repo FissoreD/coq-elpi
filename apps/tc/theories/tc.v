@@ -58,6 +58,9 @@ Elpi Accumulate File modes.
 Elpi Accumulate File create_tc_predicate.
 Elpi Accumulate File solver.
 Elpi Accumulate File cs.
+Elpi Accumulate lp:{{
+  msolve G L :- tc.msolve G L.
+}}.
 Elpi Query lp:{{
   sigma Options\ 
     tc.all-options Options,

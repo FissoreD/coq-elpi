@@ -162,6 +162,7 @@ namespace tc.link {
     }
   }
 
+  :after "firstHook"
   proj C (app[global(const C)| Ag]) L :- !, std.last Ag L.
   proj C (uvar as T) X :- declare_constraint (proj C T X) [T, _].
 

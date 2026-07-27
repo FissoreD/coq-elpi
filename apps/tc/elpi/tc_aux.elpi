@@ -268,6 +268,10 @@ namespace tc {
     coq.CS.canonical-projection? C, !,
     get-proj-nb C N, std.assert!(split-last Args A R) "err: empty list".
 
+  func norm-prim-proj constant, list term, term -> term.
+  norm-prim-proj C Ag R (app[global(const C) | Ags]) :-
+    std.append Ag [R] Ags.
+
   func build-proj-term constant, list term, term -> term.
   build-proj-term P Ag C (app[global (const P) | Ag']) :-
     std.append Ag [C] Ag'.

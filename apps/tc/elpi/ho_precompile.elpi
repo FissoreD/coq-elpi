@@ -137,7 +137,9 @@ namespace tc.precomp {
     precompile-aux _ T N T' N' :-
       tc.maybe-projection T P PN Ag R, !,
       % TODO: should precompile Ag?
-      work-proj free-var P PN Ag R N T' N'.
+      % work-proj free-var P PN Ag R N T' N'.
+      tc.norm-prim-proj P Ag R T',
+      N' = s N.
 
     % Detect maybe-eta term
     % TODO: should I precompile also the type of the fun and put it in the output term
@@ -211,7 +213,9 @@ namespace tc.precomp {
     :name "precomp-proj-goal"
     precompile-aux T A T' A :- 
       tc.maybe-projection T P PN Ag R, !,
-      work-proj names P PN Ag R z T' _.
+      % work-proj names P PN Ag R z T' _.
+      tc.norm-prim-proj P Ag R T'.
+
 
     % Detect maybe-eta term
     precompile-aux (fun Name Ty B as T) N (tc.maybe-eta-tm (fun Name Ty' B') Scope) M :-

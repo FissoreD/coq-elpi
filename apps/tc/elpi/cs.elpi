@@ -88,7 +88,9 @@ namespace cs {
       :name "cs-precompile"
       precompile T N T' N' :- 
         tc.maybe-projection T P PN Ag R, !,
-        work-proj P PN Ag R N T' N'.
+        tc.norm-prim-proj P Ag R T',
+        N' = N.
+        % work-proj P PN Ag R N T' N'.
 
       precompile X A Y A :- name X, !, X = Y, !. % avoid loading "precompile x A x A" at binders
       precompile (global _ as C) A C A :- !.

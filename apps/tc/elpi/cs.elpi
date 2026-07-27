@@ -86,11 +86,13 @@ namespace cs {
 
       func precompile term, nat -> term, nat.
       :name "cs-precompile"
-      precompile T N T' N' :- 
-        tc.maybe-projection T P PN Ag R, !,
-        tc.norm-prim-proj P Ag R T',
-        N' = N.
-        % work-proj P PN Ag R N T' N'.
+      precompile (primitive _ as T) M T M :- !.
+      % NOTE: for now proj-link are deactivated
+      % precompile T N T' N' :- 
+      %   tc.maybe-projection T P PN Ag R, !,
+      %   tc.norm-prim-proj P Ag R T',
+      %   N' = N.
+      %   % work-proj P PN Ag R N T' N'.
 
       precompile X A Y A :- name X, !, X = Y, !. % avoid loading "precompile x A x A" at binders
       precompile (global _ as C) A C A :- !.
@@ -249,10 +251,17 @@ namespace cs {
 
   namespace solver {
     func solve goal ->.
-    solve (goal Ctx _ _ T [trm P, trm R] as G) :- 
+    solve (goal Ctx _ _ T [trm P, trm R]) :- !,
       tc.compile.context Ctx CtxR,
       coq.safe-dest-app P (global (const H)) _,
-      CtxR => tc.link.proj H R T.
+      % NOTE: the following line is for search with normalized term wrt primitive projections
+      %       (i.e. primproj is replaced with its compatibility constant)
+      % if (tc.maybe-projection R CP PN Ag Rec) (tc.norm-prim-proj CP Ag Rec R') (R' = R),
+      
+      CtxR ==> tc.link.proj H R T',
+      % We separate unification of T with T' to have clearer debugging trace:
+      % there is a constraint on T, it is awaken when T is assigned
+      T' = T.
   }
 
   pred main list argument.

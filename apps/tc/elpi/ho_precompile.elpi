@@ -134,12 +134,15 @@ namespace tc.precomp {
     precompile-aux _ (pglobal _ _ as C) A C A :- !.
     precompile-aux _ (sort _ as C) A C A :- !.
     :name "precomp-proj-inst"
-    precompile-aux _ T N T' N' :-
-      tc.maybe-projection T P PN Ag R, !,
-      % TODO: should precompile Ag?
-      % work-proj free-var P PN Ag R N T' N'.
-      tc.norm-prim-proj P Ag R T',
-      N' = s N.
+    precompile-aux _ (primitive _ as T) M T M :- !.
+    % NOTE: the following rule is to deal with terms that are recognize as maybe-projection
+    %       for the moment it is deactivated and replaced with the rule above.
+    % precompile-aux _ T N T' N' :-
+    %   tc.maybe-projection T P PN Ag R, !,
+    %   % NOTE: work-proj can be use the create maybe-proj terms, used for links.
+    %   % work-proj free-var P PN Ag R N T' N'.
+    %   tc.norm-prim-proj P Ag R T',
+    %   N' = s N.
 
     % Detect maybe-eta term
     % TODO: should I precompile also the type of the fun and put it in the output term
@@ -211,10 +214,12 @@ namespace tc.precomp {
     precompile-aux (pglobal _ _ as C) A C A :- !.
     precompile-aux (sort _ as C) A C A :- !.
     :name "precomp-proj-goal"
-    precompile-aux T A T' A :- 
-      tc.maybe-projection T P PN Ag R, !,
-      % work-proj names P PN Ag R z T' _.
-      tc.norm-prim-proj P Ag R T'.
+    precompile-aux (primitive _ as T) M T M :- !.
+    % NOTE: for now proj-link are deactivated
+    % precompile-aux T A T' A :- 
+    %   tc.maybe-projection T P PN Ag R, !,
+    %   % work-proj names P PN Ag R z T' _.
+    %   tc.norm-prim-proj P Ag R T'.
 
 
     % Detect maybe-eta term

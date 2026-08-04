@@ -37,6 +37,8 @@ RUNTIMET = "runtimeT"
 KEYL =                               [TOT_COQ_TIME, TOT_ELPI_TIME, TOT_NORMALIZE, TOT_COMPILE_CTX, TOT_BUILD_QUERY, TOT_INSTANCE_SEARCH, TOT_FULL_INSTANCE_SEARCH, TOT_REFINE, MSOLVE, COMPILT,    RUNTIMET]
 HEADER = re.sub(r'\s+', ' ', "Height, Coq,          Elpi,          normalize,     ctx,             BuildQuery,      TC search,           TC Search Full,           Refine,     msolve, ElpiCompil, ElpiRuntime, DIFF, Ratio(Coq/Elpi), Ratio(Elpi/Coq)")
 
+NO_CHECK = False
+SHARE_SOL = False
 
 def printDict(d):
     # for key in KEYS:
@@ -90,12 +92,11 @@ def buildTree(len):
     return STR
 
 accumulate = """
-Elpi Accumulate TC_solver lp:{{
+Elpi Accumulate TC.Solver lp:{{
   :after "firstHook"
-  tc {{:gref Inj}} {{Inj lp:R1 lp:R1 (@compose lp:A lp:A lp:A lp:L lp:R)}} Sol :-
-    L = R, !,
-    tc {{:gref Inj}} {{Inj lp:R1 lp:R1 lp:L}} InjL,
-    Sol = {{@compose_inj lp:A lp:A lp:A lp:R1 lp:R1 lp:R1 lp:L lp:L lp:InjL lp:InjL }}.
+  tc-Inj T T R R {{(@compose lp:T lp:T lp:T lp:F lp:F)}} 
+    {{let P := lp:I in @compose_inj lp:A lp:A lp:A lp:R lp:R lp:R lp:F lp:F P P}} :- !,
+    tc-Inj T T R R F I.
 }}.
 """
 
@@ -109,7 +110,13 @@ Elpi Accumulate TC.Solver lp:{{
     
     if-true tc.print-solution (coq.say "[TC] The proof typechecks").
 }}.
-""" if False else ""
+"""
+
+hint_ext_coq = """
+Hint Extern 0 (Inj _ _ (?f ∘ ?f)) =>
+  assert (Inj eq eq f) as H by apply _;
+  exact (compose_inj eq eq eq f f H H) : typeclass_instances.
+"""
 
 def writeFile(fileName: str, composeLen: int, isCoq: bool):
     TXT = f"(* {random.random()} *)\n"
@@ -117,9 +124,14 @@ def writeFile(fileName: str, composeLen: int, isCoq: bool):
     if isCoq:
         TXT += "From elpi_apps_tc_tests_stdlib Require Import stdppInjClassic.\n"
         TXT += f"Goal Inj eq eq({GOAL}). Time apply _. Qed.\n"
+        if SHARE_SOL:
+            TXT += hint_ext_coq
     else:
         TXT += "From elpi_apps_tc_tests_stdlib Require Import stdppInj.\n"
-        TXT += refine_no_check # (Un)Comment this for using refine or refine.no_check
+        if NO_CHECK:
+            TXT += refine_no_check # (Un)Comment this for using refine or refine.no_check
+        if SHARE_SOL:
+            TXT += accumulate
         TXT += "Elpi TC.Solver.\n"
         TXT += f"Goal Inj eq eq({GOAL}).\n"
         # TXT += "Elpi Command time_it. Elpi Accumulate  lp:{{ main _ :- coq.say {gettimeofday}. }}. Elpi time_it.\n"

@@ -934,7 +934,7 @@ Section prod_setoid.
   Global Instance pair_proper : Proper ((≡) ==> (≡) ==> (≡@{A*B})) pair := _.
 
   Elpi Accumulate TC.Solver lp:{{
-    shorten tc-elpi_apps_tc_tests_stdlib.bigTest.{tc-Inj2}.
+    % shorten tc-elpi_apps_tc_tests_stdlib.bigTest.{tc-Inj2}.
     % shorten tc-bigTest.{tc-Inj2}.
     :after "lastHook" 
     tc-Inj2 A B C RA RB RC F S :-
@@ -1059,7 +1059,7 @@ Global Instance inr_proper `{Equiv A, Equiv B} : Proper ((≡) ==> (≡)) (@inr 
 
 
 Elpi Accumulate TC.Solver lp:{{
-  shorten tc-elpi_apps_tc_tests_stdlib.bigTest.{tc-Inj}.
+  % shorten tc-elpi_apps_tc_tests_stdlib.bigTest.{tc-Inj}.
   % shorten tc-bigTest.{tc-Inj}.
   :after "lastHook" 
   tc-Inj A B R1 R2 S C :-

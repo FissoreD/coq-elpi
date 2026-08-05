@@ -131,7 +131,7 @@ def writeFile(fileName: str, composeLen: int, isCoq: bool):
     GOAL = buildTree(composeLen)
     if isCoq:
         TXT += "From elpi_apps_tc_tests_stdlib Require Import stdppInjClassic.\n"
-        TXT += f"Goal Inj eq eq({GOAL}). Time apply _. Qed.\n"
+        TXT += f"Goal Inj eq eq({GOAL}).\n Time apply _. \nQed.\n"
         if SHARE_SOL:
             TXT += hint_ext_coq
     else:

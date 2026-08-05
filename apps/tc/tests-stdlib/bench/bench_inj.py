@@ -22,6 +22,7 @@ type class search.
     * -onlyOne : optional to run the test only for the tree of size N. By
       default, the tests are made for each i in [1..N] included
     * -share : to make memory sharing (using let in the slution)
+    * -nocheck: use refine.no_check instead of refine in elpi solver
 
 - the result of the stat is written in the plot.csv file, it can be plotted
   by compiling the plot.tex file
@@ -103,7 +104,7 @@ accumulate = """
 Elpi Accumulate TC.Solver lp:{{
   :after "firstHook"
   tc-Inj T T R R {{(@compose lp:T lp:T lp:T lp:F lp:F)}} 
-    {{let P := lp:I in @compose_inj lp:A lp:A lp:A lp:R lp:R lp:R lp:F lp:F P P}} :- !,
+    {{let P := lp:I in @compose_inj lp:T lp:T lp:T lp:R lp:R lp:R lp:F lp:F P P}} :- !,
     tc-Inj T T R R F I.
 }}.
 """
@@ -121,9 +122,9 @@ Elpi Accumulate TC.Solver lp:{{
 """
 
 hint_ext_coq = """
-Hint Extern 0 (Inj _ _ (?f ∘ ?f)) =>
-  assert (Inj eq eq f) as H by apply _;
-  exact (compose_inj eq eq eq f f H H) : typeclass_instances.
+Hint Extern 0 (@Inj ?t ?t ?r ?r (?f ∘ ?f)) =>
+  assert (@Inj t t r r f) as H by apply _;
+  exact (@compose_inj t t t r r r f f H H) : typeclass_instances.
 """
 
 def writeFile(fileName: str, composeLen: int, isCoq: bool):
@@ -131,9 +132,9 @@ def writeFile(fileName: str, composeLen: int, isCoq: bool):
     GOAL = buildTree(composeLen)
     if isCoq:
         TXT += "From elpi_apps_tc_tests_stdlib Require Import stdppInjClassic.\n"
-        TXT += f"Goal Inj eq eq({GOAL}).\n Time apply _. \nQed.\n"
         if SHARE_SOL:
             TXT += hint_ext_coq
+        TXT += f"Goal Inj eq eq({GOAL}).\n Time apply _. \nQed.\n"
     else:
         TXT += "From elpi_apps_tc_tests_stdlib Require Import stdppInj.\n"
         if NO_CHECK:
@@ -205,6 +206,8 @@ if __name__ == "__main__":
     height = int(sys.argv[1])
     if "-share" in sys.argv:
         SHARE_SOL = True
+    if "-nocheck" in sys.argv:
+        NO_CHECK = True
     pl = loopTreeDepth(file_name, height, makeCoq=not (
         "-nocoq" in sys.argv), onlyOne=("-onlyOne" in sys.argv))
     

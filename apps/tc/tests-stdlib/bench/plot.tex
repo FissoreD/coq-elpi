@@ -24,8 +24,18 @@
       scaled x ticks=false
     ]
 
-    % Base axis line
-    \path[name path=axis] (axis cs:0,0) -- (axis cs:32770,0);
+    % Base axis line (spans to max x value in data)
+      \pgfplotstableread[col sep=comma]{\a}\datatable
+
+      % Number of rows
+      \pgfplotstablegetrowsof{\datatable}
+      \pgfmathtruncatemacro{\lastrow}{\pgfplotsretval-1}
+
+      % Get the last element of column "mycolumn"
+      \pgfplotstablegetelem{\lastrow}{HEIGHT}\of{\datatable}
+      \edef\lastelement{\pgfplotsretval}
+
+    \path[name path=axis] (axis cs:0,0) -- (axis cs:\lastelement,0);
 
     % Main plots (these WILL appear automatically in legend)
     \foreach \col in \cols{

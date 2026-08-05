@@ -1,0 +1,52 @@
+\documentclass[tikz]{standalone}
+
+\usepackage{../../languages}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{fillbetween}
+\usetikzlibrary{patterns}
+
+\def\a{plot.csv}
+
+\begin{document}
+\def\cols{REFINE, COQ}
+
+\begin{tikzpicture}
+  \begin{axis}[
+      axis lines=center,
+      x label style={at={(axis description cs:.5,-.1)},anchor=north},
+      y label style={at={(axis description cs:-.1,.5)},rotate=90, anchor=south},
+      xlabel={Problem size (\# of nodes)},
+      ylabel={Time (s)},
+      legend pos=north west,
+      xtick={2048,4096,8192,16384},
+      xticklabels={$2^{11}$, $2^{12}$,$2^{13}$,$2^{14}$},
+      scaled x ticks=false
+    ]
+
+    % Base axis line
+    \path[name path=axis] (axis cs:0,0) -- (axis cs:32770,0);
+
+    % Main plots (these WILL appear automatically in legend)
+    \foreach \col in \cols{
+      \addplot table [x=HEIGHT, y=\col, col sep=comma] {\a};
+    }
+
+    % Invisible paths for fillbetween
+    \addplot[name path=TC, opacity=1] table [x=HEIGHT, y=TC, col sep=comma] {\a};
+    \addplot[name path=BUILD, opacity=1] table [x=HEIGHT, y=BUILD, col sep=comma] {\a};
+    \addplot[name path=OVERHEAD, opacity=1] table [x=HEIGHT, y=OVERHEAD, col sep=comma] {\a};
+    \addplot[name path=REFINE, opacity=1] table [x=HEIGHT, y=REFINE, col sep=comma] {\a};
+
+    % Filled areas (do NOT create legend entries automatically)
+    \addplot[fill=black!50, opacity=1] fill between [of=axis and TC];
+    \addplot[fill=black!30, opacity=1] fill between [of=TC and BUILD];
+    \addplot[fill=black!10, opacity=1] fill between [of=OVERHEAD and BUILD];
+    \addplot[pattern=dots, opacity=1] fill between [of=OVERHEAD and REFINE];
+
+    % SINGLE legend (order matters!)
+    \legend{\elpi, \rocq,,,,, TC Search, Build Query, Overhead, Typecheck}
+
+  \end{axis}
+\end{tikzpicture}
+\end{document}

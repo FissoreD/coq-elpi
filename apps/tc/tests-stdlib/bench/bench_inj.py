@@ -13,10 +13,18 @@ type class search.
 
 - it should be run from the ./apps/tc folder
 
+- it creates a complete tree of function composition, the tree is passed to the
+  Inj class, the tree is written in the bench_inj.v file
+
 - parameters of command line:
     * N : the depth of the tree to build in tests/test.v
     * -nocoq : optional to test only elpi
-    * -onlyOne : optional to run the test only for the tree of size N. By default, the tests are made for each i in [1..N] included
+    * -onlyOne : optional to run the test only for the tree of size N. By
+      default, the tests are made for each i in [1..N] included
+    * -share : to make memory sharing (using let in the slution)
+
+- the result of the stat is written in the plot.csv file, it can be plotted
+  by compiling the plot.tex file
 """
 
 INJ_BASE_FUN = "f"
@@ -192,13 +200,21 @@ def loopTreeDepth(file_name: str, maxHeight: int, makeCoq=True, onlyOne=False):
 
 if __name__ == "__main__":
     print(os.curdir)
-    file_name = "tests-stdlib/bench/bench_inj"
+    path = "tests-stdlib/bench/"
+    file_name = path + "/bench_inj"
     height = int(sys.argv[1])
+    if "-share" in sys.argv:
+        SHARE_SOL = True
     pl = loopTreeDepth(file_name, height, makeCoq=not (
         "-nocoq" in sys.argv), onlyOne=("-onlyOne" in sys.argv))
     
     print("\n\n ELPI STATS")
-    print("HEIGHT, TC, BUILD, OVERHEAD, REFINE, COQ")
 
-    print(print_plot((pl)))
+    header = "HEIGHT, TC, BUILD, OVERHEAD, REFINE, COQ\n"
+    pplot = header + print_plot(pl)
+
+    print(pplot)
+
+    with open(path+"/plot.csv", "w") as f:
+        f.write(pplot)
     #writeFile(file_name, 1, False)

@@ -1,6 +1,6 @@
 \documentclass[tikz]{standalone}
 
-\usepackage{../../languages}
+% \usepackage{../../languages}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.18}
 \usepgfplotslibrary{fillbetween}
@@ -19,8 +19,8 @@
       xlabel={Problem size (\# of nodes)},
       ylabel={Time (s)},
       legend pos=north west,
-      xtick={2048,4096,8192,16384},
-      xticklabels={$2^{11}$, $2^{12}$,$2^{13}$,$2^{14}$},
+      % xtick={2048,4096,8192,16384},
+      % xticklabels={$2^{11}$, $2^{12}$,$2^{13}$,$2^{14}$},
       scaled x ticks=false
     ]
 
@@ -45,7 +45,7 @@
     \addplot[pattern=dots, opacity=1] fill between [of=OVERHEAD and REFINE];
 
     % SINGLE legend (order matters!)
-    \legend{\elpi, \rocq,,,,, TC Search, Build Query, Overhead, Typecheck}
+    \legend{Elpi, Rocq,,,,, TC Search, Build Query, Overhead, Typecheck}
 
   \end{axis}
 \end{tikzpicture}

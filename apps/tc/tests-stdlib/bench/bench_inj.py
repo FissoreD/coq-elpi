@@ -108,6 +108,13 @@ Elpi Accumulate TC.Solver lp:{{
     tc-Inj T T R R F I.
 }}.
 """
+# Elpi Accumulate TC.Solver lp:{{
+#   :after "firstHook"
+#   tc-Inj T T R R {{(@compose lp:T lp:T lp:T lp:F lp:F)}} 
+#     {{let P := lp:I in let T := lp:T in let R := lp:R in let F := lp:F in @compose_inj T T T R R R F F P P}} :- !,
+#     tc-Inj T T R R F I.
+# }}.
+
 
 refine_no_check = """
 Elpi Accumulate TC.Solver lp:{{

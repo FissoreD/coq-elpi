@@ -161,8 +161,11 @@ def run(file_name, height):
 
 def plot_dict(i, d):
     L = [2**i, d[TOT_INSTANCE_SEARCH]]
-    L.append(L[-1] + d[TOT_INSTANCE_SEARCH] + d[TOT_BUILD_QUERY] + d[TOT_COMPILE_CTX] + d[TOT_NORMALIZE])
-    L.append(L[-1] + d[TOT_REFINE])
+    # instsearch + build query
+    L.append(L[-1] + d[TOT_BUILD_QUERY] + d[TOT_COMPILE_CTX] + d[TOT_NORMALIZE])
+    # instsearch + build query + overhead
+    L.append(d[TOT_ELPI_TIME]-d[TOT_REFINE])
+    # instsearch + build query + overhead
     L.append(d[TOT_ELPI_TIME])
     L.append(d[TOT_COQ_TIME])
     return L
@@ -195,7 +198,7 @@ if __name__ == "__main__":
         "-nocoq" in sys.argv), onlyOne=("-onlyOne" in sys.argv))
     
     print("\n\n ELPI STATS")
-    print("HEIGHT, TC, BUILD, REFINE, COQ")
+    print("HEIGHT, TC, BUILD, OVERHEAD, REFINE, COQ")
 
     print(print_plot((pl)))
     #writeFile(file_name, 1, False)
